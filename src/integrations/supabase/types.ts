@@ -82,6 +82,80 @@ export type Database = {
           },
         ]
       }
+      cash_receipt: {
+        Row: {
+          amount: number
+          bank_account_code: string
+          client_id: string
+          created_at: string | null
+          created_by: string | null
+          date: string
+          description: string | null
+          id: string
+          invoice_id: string
+          journal_id: string | null
+          number: string
+          pph23_withheld: number | null
+        }
+        Insert: {
+          amount: number
+          bank_account_code: string
+          client_id: string
+          created_at?: string | null
+          created_by?: string | null
+          date: string
+          description?: string | null
+          id?: string
+          invoice_id: string
+          journal_id?: string | null
+          number: string
+          pph23_withheld?: number | null
+        }
+        Update: {
+          amount?: number
+          bank_account_code?: string
+          client_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          description?: string | null
+          id?: string
+          invoice_id?: string
+          journal_id?: string | null
+          number?: string
+          pph23_withheld?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_receipt_bank_account_code_fkey"
+            columns: ["bank_account_code"]
+            isOneToOne: false
+            referencedRelation: "account"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "cash_receipt_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_receipt_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "sales_invoice"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_receipt_journal"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journal"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client: {
         Row: {
           address: string | null
@@ -126,6 +200,64 @@ export type Database = {
           withholds_pph23?: boolean | null
         }
         Relationships: []
+      }
+      invoice_line: {
+        Row: {
+          amount: number
+          description: string
+          id: string
+          invoice_id: string
+          project_id: string | null
+          quantity: number | null
+          revenue_account_code: string
+          sort_order: number | null
+          unit_price: number
+        }
+        Insert: {
+          amount: number
+          description: string
+          id?: string
+          invoice_id: string
+          project_id?: string | null
+          quantity?: number | null
+          revenue_account_code: string
+          sort_order?: number | null
+          unit_price: number
+        }
+        Update: {
+          amount?: number
+          description?: string
+          id?: string
+          invoice_id?: string
+          project_id?: string | null
+          quantity?: number | null
+          revenue_account_code?: string
+          sort_order?: number | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_line_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "sales_invoice"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_line_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_line_revenue_account_code_fkey"
+            columns: ["revenue_account_code"]
+            isOneToOne: false
+            referencedRelation: "account"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       journal: {
         Row: {
@@ -270,6 +402,88 @@ export type Database = {
           },
         ]
       }
+      sales_invoice: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          created_by: string | null
+          date: string
+          description: string | null
+          due_date: string
+          faktur_pajak_number: string | null
+          id: string
+          journal_id: string | null
+          number: string
+          project_id: string | null
+          status: string | null
+          subtotal: number
+          total: number
+          unbilled_revenue_recognized: number | null
+          updated_at: string | null
+          vat_amount: number
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          created_by?: string | null
+          date: string
+          description?: string | null
+          due_date: string
+          faktur_pajak_number?: string | null
+          id?: string
+          journal_id?: string | null
+          number: string
+          project_id?: string | null
+          status?: string | null
+          subtotal: number
+          total: number
+          unbilled_revenue_recognized?: number | null
+          updated_at?: string | null
+          vat_amount: number
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          description?: string | null
+          due_date?: string
+          faktur_pajak_number?: string | null
+          id?: string
+          journal_id?: string | null
+          number?: string
+          project_id?: string | null
+          status?: string | null
+          subtotal?: number
+          total?: number
+          unbilled_revenue_recognized?: number | null
+          updated_at?: string | null
+          vat_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_invoice_journal"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_invoice_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_invoice_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings: {
         Row: {
           description: string | null
@@ -353,7 +567,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_next_invoice_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_next_receipt_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       account_type:
