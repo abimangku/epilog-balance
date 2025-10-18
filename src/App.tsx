@@ -11,8 +11,12 @@ import { AIInbox } from "./components/AIInbox";
 import { InvoiceForm } from "./components/InvoiceForm";
 import { ReceiptForm } from "./components/ReceiptForm";
 import { ARAgingReport } from "./components/ARAgingReport";
+import { BillForm } from "./components/BillForm";
+import { BillList } from "./components/BillList";
+import { PaymentForm } from "./components/PaymentForm";
+import { APAgingReport } from "./components/APAgingReport";
 import NotFound from "./pages/NotFound";
-import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3 } from "lucide-react";
+import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp } from "lucide-react";
 
 const queryClient = new QueryClient();
 
@@ -94,6 +98,38 @@ const App = () => (
                   AI Inbox
                 </Link>
               </div>
+              
+              <div className="pt-4 mt-4 border-t border-sidebar-border">
+                <div className="text-xs text-sidebar-foreground/60 px-4 mb-2 font-semibold">PURCHASES & AP</div>
+                <Link 
+                  to="/bills" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <FileStack className="h-4 w-4" />
+                  Bills
+                </Link>
+                <Link 
+                  to="/bills/new" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <FileText className="h-4 w-4" />
+                  New Bill
+                </Link>
+                <Link 
+                  to="/payments/new" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Pay Vendor
+                </Link>
+                <Link 
+                  to="/reports/ap-aging" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  AP Aging
+                </Link>
+              </div>
             </nav>
           </div>
 
@@ -108,6 +144,10 @@ const App = () => (
               <Route path="/reports/ar-aging" element={<ARAgingReport />} />
               <Route path="/ai/classify" element={<AIClassifier />} />
               <Route path="/ai/inbox" element={<AIInbox />} />
+              <Route path="/bills" element={<BillList />} />
+              <Route path="/bills/new" element={<BillForm />} />
+              <Route path="/payments/new" element={<PaymentForm />} />
+              <Route path="/reports/ap-aging" element={<APAgingReport />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

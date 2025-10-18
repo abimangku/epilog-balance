@@ -82,6 +82,64 @@ export type Database = {
           },
         ]
       }
+      bill_line: {
+        Row: {
+          amount: number
+          bill_id: string
+          description: string
+          expense_account_code: string
+          id: string
+          project_code: string | null
+          quantity: number
+          sort_order: number | null
+          unit_price: number
+        }
+        Insert: {
+          amount: number
+          bill_id: string
+          description: string
+          expense_account_code: string
+          id?: string
+          project_code?: string | null
+          quantity?: number
+          sort_order?: number | null
+          unit_price: number
+        }
+        Update: {
+          amount?: number
+          bill_id?: string
+          description?: string
+          expense_account_code?: string
+          id?: string
+          project_code?: string | null
+          quantity?: number
+          sort_order?: number | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_line_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "ap_aging_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_line_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_bill"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_line_expense_account_code_fkey"
+            columns: ["expense_account_code"]
+            isOneToOne: false
+            referencedRelation: "account"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       cash_receipt: {
         Row: {
           amount: number
@@ -562,17 +620,205 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_bill: {
+        Row: {
+          category: string
+          created_at: string | null
+          created_by: string | null
+          date: string
+          description: string | null
+          due_date: string
+          faktur_pajak_number: string | null
+          id: string
+          journal_id: string | null
+          number: string
+          project_id: string | null
+          status: string
+          subtotal: number
+          total: number
+          updated_at: string | null
+          vat_amount: number
+          vendor_id: string
+          vendor_invoice_number: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          created_by?: string | null
+          date: string
+          description?: string | null
+          due_date: string
+          faktur_pajak_number?: string | null
+          id?: string
+          journal_id?: string | null
+          number: string
+          project_id?: string | null
+          status?: string
+          subtotal: number
+          total: number
+          updated_at?: string | null
+          vat_amount?: number
+          vendor_id: string
+          vendor_invoice_number?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          description?: string | null
+          due_date?: string
+          faktur_pajak_number?: string | null
+          id?: string
+          journal_id?: string | null
+          number?: string
+          project_id?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string | null
+          vat_amount?: number
+          vendor_id?: string
+          vendor_invoice_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_bill_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_bill_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "project"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_bill_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendor_payment: {
+        Row: {
+          amount: number
+          bank_account_code: string
+          bill_id: string
+          created_at: string | null
+          created_by: string | null
+          date: string
+          description: string | null
+          id: string
+          journal_id: string | null
+          number: string
+          pph23_withheld: number
+          vendor_id: string
+        }
+        Insert: {
+          amount: number
+          bank_account_code: string
+          bill_id: string
+          created_at?: string | null
+          created_by?: string | null
+          date: string
+          description?: string | null
+          id?: string
+          journal_id?: string | null
+          number: string
+          pph23_withheld?: number
+          vendor_id: string
+        }
+        Update: {
+          amount?: number
+          bank_account_code?: string
+          bill_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          description?: string | null
+          id?: string
+          journal_id?: string | null
+          number?: string
+          pph23_withheld?: number
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_payment_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "ap_aging_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_payment_bill_id_fkey"
+            columns: ["bill_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_bill"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_payment_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_payment_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      ap_aging_summary: {
+        Row: {
+          aging_bucket: string | null
+          balance: number | null
+          category: string | null
+          date: string | null
+          days_overdue: number | null
+          due_date: string | null
+          id: string | null
+          number: string | null
+          project_name: string | null
+          status: string | null
+          total: number | null
+          total_paid: number | null
+          vendor_name: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      get_next_bill_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_next_invoice_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_next_payment_number: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
       get_next_receipt_number: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      update_bill_status: {
+        Args: { bill_uuid: string }
         Returns: string
       }
     }
