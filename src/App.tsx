@@ -15,8 +15,10 @@ import { BillForm } from "./components/BillForm";
 import { BillList } from "./components/BillList";
 import { PaymentForm } from "./components/PaymentForm";
 import { APAgingReport } from "./components/APAgingReport";
+import { PeriodClose } from "./components/PeriodClose";
+import { SnapshotViewer } from "./components/SnapshotViewer";
 import NotFound from "./pages/NotFound";
-import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp } from "lucide-react";
+import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp, Lock, Camera } from "lucide-react";
 
 const queryClient = new QueryClient();
 
@@ -130,6 +132,24 @@ const App = () => (
                   AP Aging
                 </Link>
               </div>
+              
+              <div className="pt-4 mt-4 border-t border-sidebar-border">
+                <div className="text-xs text-sidebar-foreground/60 px-4 mb-2 font-semibold">PERIOD CLOSE</div>
+                <Link 
+                  to="/period-close" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <Lock className="h-4 w-4" />
+                  Close Period
+                </Link>
+                <Link 
+                  to="/snapshots" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <Camera className="h-4 w-4" />
+                  Snapshots
+                </Link>
+              </div>
             </nav>
           </div>
 
@@ -148,6 +168,8 @@ const App = () => (
               <Route path="/bills/new" element={<BillForm />} />
               <Route path="/payments/new" element={<PaymentForm />} />
               <Route path="/reports/ap-aging" element={<APAgingReport />} />
+              <Route path="/period-close" element={<PeriodClose />} />
+              <Route path="/snapshots" element={<SnapshotViewer />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

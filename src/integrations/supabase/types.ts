@@ -47,6 +47,45 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_audit: {
+        Row: {
+          audit_type: string
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          issues: Json | null
+          metrics: Json | null
+          period: string
+          recommendations: string[] | null
+          status: string
+          summary: string | null
+        }
+        Insert: {
+          audit_type?: string
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          issues?: Json | null
+          metrics?: Json | null
+          period: string
+          recommendations?: string[] | null
+          status: string
+          summary?: string | null
+        }
+        Update: {
+          audit_type?: string
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          issues?: Json | null
+          metrics?: Json | null
+          period?: string
+          recommendations?: string[] | null
+          status?: string
+          summary?: string | null
+        }
+        Relationships: []
+      }
       bank_account: {
         Row: {
           account_code: string
@@ -412,6 +451,80 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      period_snapshot: {
+        Row: {
+          account_code: string
+          created_at: string | null
+          credit_balance: number
+          debit_balance: number
+          id: string
+          net_balance: number
+          period: string
+        }
+        Insert: {
+          account_code: string
+          created_at?: string | null
+          credit_balance?: number
+          debit_balance?: number
+          id?: string
+          net_balance?: number
+          period: string
+        }
+        Update: {
+          account_code?: string
+          created_at?: string | null
+          credit_balance?: number
+          debit_balance?: number
+          id?: string
+          net_balance?: number
+          period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "period_snapshot_account_code_fkey"
+            columns: ["account_code"]
+            isOneToOne: false
+            referencedRelation: "account"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      period_status: {
+        Row: {
+          ai_audit_id: string | null
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string | null
+          id: string
+          period: string
+          snapshot_id: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          ai_audit_id?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string | null
+          id?: string
+          period: string
+          snapshot_id?: string | null
+          status: string
+          updated_at?: string | null
+        }
+        Update: {
+          ai_audit_id?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string | null
+          id?: string
+          period?: string
+          snapshot_id?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       project: {
         Row: {
@@ -801,6 +914,26 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_vat_position: {
+        Args: { p_period: string }
+        Returns: {
+          net_payable: number
+          ppn_keluaran: number
+          ppn_masukan: number
+        }[]
+      }
+      create_period_snapshot: {
+        Args: { p_period: string }
+        Returns: string
+      }
+      get_account_balance: {
+        Args: { p_account_code: string; p_period: string }
+        Returns: {
+          credit_total: number
+          debit_total: number
+          net_balance: number
+        }[]
+      }
       get_next_bill_number: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -816,6 +949,10 @@ export type Database = {
       get_next_receipt_number: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      is_period_closed: {
+        Args: { p_period: string }
+        Returns: boolean
       }
       update_bill_status: {
         Args: { bill_uuid: string }
