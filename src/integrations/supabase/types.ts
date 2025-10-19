@@ -218,6 +218,13 @@ export type Database = {
             referencedRelation: "account"
             referencedColumns: ["code"]
           },
+          {
+            foreignKeyName: "bank_account_account_code_fkey"
+            columns: ["account_code"]
+            isOneToOne: false
+            referencedRelation: "trial_balance"
+            referencedColumns: ["code"]
+          },
         ]
       }
       bill_line: {
@@ -276,6 +283,13 @@ export type Database = {
             referencedRelation: "account"
             referencedColumns: ["code"]
           },
+          {
+            foreignKeyName: "bill_line_expense_account_code_fkey"
+            columns: ["expense_account_code"]
+            isOneToOne: false
+            referencedRelation: "trial_balance"
+            referencedColumns: ["code"]
+          },
         ]
       }
       cash_receipt: {
@@ -327,6 +341,13 @@ export type Database = {
             columns: ["bank_account_code"]
             isOneToOne: false
             referencedRelation: "account"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "cash_receipt_bank_account_code_fkey"
+            columns: ["bank_account_code"]
+            isOneToOne: false
+            referencedRelation: "trial_balance"
             referencedColumns: ["code"]
           },
           {
@@ -557,6 +578,13 @@ export type Database = {
             referencedRelation: "account"
             referencedColumns: ["code"]
           },
+          {
+            foreignKeyName: "invoice_line_revenue_account_code_fkey"
+            columns: ["revenue_account_code"]
+            isOneToOne: false
+            referencedRelation: "trial_balance"
+            referencedColumns: ["code"]
+          },
         ]
       }
       journal: {
@@ -688,6 +716,13 @@ export type Database = {
             referencedColumns: ["code"]
           },
           {
+            foreignKeyName: "journal_line_account_code_fkey"
+            columns: ["account_code"]
+            isOneToOne: false
+            referencedRelation: "trial_balance"
+            referencedColumns: ["code"]
+          },
+          {
             foreignKeyName: "journal_line_journal_id_fkey"
             columns: ["journal_id"]
             isOneToOne: false
@@ -763,6 +798,13 @@ export type Database = {
             columns: ["account_code"]
             isOneToOne: false
             referencedRelation: "account"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "period_snapshot_account_code_fkey"
+            columns: ["account_code"]
+            isOneToOne: false
+            referencedRelation: "trial_balance"
             referencedColumns: ["code"]
           },
         ]
@@ -1448,6 +1490,17 @@ export type Database = {
           mtd_revenue: number | null
           overdue_bills: number | null
           overdue_invoices: number | null
+        }
+        Relationships: []
+      }
+      trial_balance: {
+        Row: {
+          balance: number | null
+          code: string | null
+          name: string | null
+          total_credit: number | null
+          total_debit: number | null
+          type: string | null
         }
         Relationships: []
       }
