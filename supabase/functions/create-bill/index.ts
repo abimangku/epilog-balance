@@ -12,15 +12,15 @@ const billLineSchema = z.object({
   unitPrice: z.number().min(0).max(999999999999),
   amount: z.number().min(0).max(999999999999),
   expenseAccountCode: z.string().regex(/^\d-\d{5}$/),
-  projectCode: z.string().max(50).optional(),
+  projectCode: z.string().max(50).nullable().optional(),
 })
 
 const createBillSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   vendorId: z.string().uuid(),
-  projectId: z.string().uuid().optional(),
+  projectId: z.string().uuid().nullable().optional(),
   vendorInvoiceNumber: z.string().max(100).optional(),
-  fakturPajakNumber: z.string().max(100).optional(),
+  fakturPajakNumber: z.string().max(100).nullable().optional(),
   category: z.enum(['COGS', 'OPEX']),
   lines: z.array(billLineSchema).min(1).max(100),
 })

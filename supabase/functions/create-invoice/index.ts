@@ -12,12 +12,12 @@ const invoiceLineSchema = z.object({
   unitPrice: z.number().min(0).max(999999999999),
   amount: z.number().min(0).max(999999999999),
   revenueAccountCode: z.string().regex(/^\d-\d{5}$/),
-  projectId: z.string().uuid().optional(),
+  projectId: z.string().uuid().nullable().optional(),
 })
 
 const createInvoiceSchema = z.object({
   clientId: z.string().uuid(),
-  projectId: z.string().uuid().optional(),
+  projectId: z.string().uuid().nullable().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   description: z.string().max(1000).optional(),
@@ -94,7 +94,7 @@ serve(async (req) => {
         date,
         due_date: dueDate,
         client_id: clientId,
-        project_id: projectId,
+        project_id: projectId || null,
         subtotal,
         vat_amount: vatAmount,
         total,
@@ -115,7 +115,7 @@ serve(async (req) => {
       unit_price: line.unitPrice,
       amount: line.amount,
       revenue_account_code: line.revenueAccountCode,
-      project_id: projectId,
+      project_id: line.projectId || projectId || null,
       sort_order: idx,
     }))
 

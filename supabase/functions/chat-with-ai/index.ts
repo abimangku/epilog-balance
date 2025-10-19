@@ -131,6 +131,7 @@ ALWAYS call the tool function so the user gets an interactive approval card with
    - ALWAYS include 'subtotal', 'vat_amount', and 'total' in suggestion
    - Verify subtotal + vat_amount = total before submitting
    - Ensure all revenue_account_code fields are valid from Chart of Accounts
+   - For projectId and project_id: OMIT the field entirely if no project, OR set to null explicitly
    
 2. When suggesting bills:
    - ALWAYS include 'amount' field in each line (quantity * unit_price)
@@ -138,12 +139,14 @@ ALWAYS call the tool function so the user gets an interactive approval card with
    - ALWAYS include 'subtotal', 'vat_amount', and 'total'
    - Ensure all expense_account_code fields are valid from Chart of Accounts
    - If vendor has PPh23, calculate withholding separately
+   - For projectId and project_code: OMIT if no project, OR set to null
    
 3. For all suggestions:
    - Double-check all required fields are present before calling tools
    - Validate account codes exist in Chart of Accounts provided in context
    - Ensure dates are in YYYY-MM-DD format
-   - Never submit suggestions with missing or null required fields
+   - For optional fields (projectId, faktur_pajak_number, description): Either OMIT entirely OR set to null
+   - Never submit suggestions with missing required fields
    - Amounts should be calculated accurately (quantity * unit_price = amount)
 
 **PROACTIVE ASSISTANT BEHAVIOR:**

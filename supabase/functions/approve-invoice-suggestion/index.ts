@@ -97,7 +97,7 @@ serve(async (req) => {
         clientId: client.id,
         date: suggestionData.date,
         dueDate: suggestionData.due_date || suggestionData.date,
-        projectId,
+        projectId: projectId || null,
         description: suggestionData.description,
         lines: suggestionData.lines.map((line: any) => ({
           description: line.description,
@@ -105,7 +105,7 @@ serve(async (req) => {
           unitPrice: line.unit_price,
           amount: line.amount,
           revenueAccountCode: line.revenue_account_code,
-          projectId: line.project_id || projectId
+          projectId: line.project_id || projectId || null
         }))
       },
       headers: {
@@ -135,14 +135,14 @@ serve(async (req) => {
         clientId: client.id,
         date: suggestionData.date,
         dueDate: suggestionData.due_date || suggestionData.date,
-        projectId,
+        projectId: projectId || null,
         lines: suggestionData.lines.map((line: any) => ({
           description: line.description,
           quantity: line.quantity || 1,
           unitPrice: line.unit_price,
           amount: line.amount,
           revenueAccountCode: line.revenue_account_code,
-          projectId: line.project_id || projectId
+          projectId: line.project_id || projectId || null
         }))
       }, null, 2));
       
