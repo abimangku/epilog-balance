@@ -901,8 +901,361 @@ serve(async (req) => {
       throw new Error(`AI API error: ${response.status}`);
     }
 
-    // Stream response back to client
-    return new Response(response.body, {
+    // Check if response contains tool calls - if so, handle them
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('No response body');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let toolCalls: any[] = [];
+    let hasToolCalls = false;
+    let fullContent = '';
+
+    // Read the stream to detect tool calls
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') break;
+        
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta;
+          
+          if (delta?.tool_calls) {
+            hasToolCalls = true;
+            for (const tc of delta.tool_calls) {
+              if (tc.index !== undefined) {
+                if (!toolCalls[tc.index]) {
+                  toolCalls[tc.index] = {
+                    id: tc.id,
+                    type: 'function',
+                    function: { name: '', arguments: '' }
+                  };
+                }
+                if (tc.function?.name) toolCalls[tc.index].function.name = tc.function.name;
+                if (tc.function?.arguments) toolCalls[tc.index].function.arguments += tc.function.arguments;
+              }
+            }
+          }
+          
+          if (delta?.content) {
+            fullContent += delta.content;
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+    }
+
+    // If no tool calls, return the content as-is
+    if (!hasToolCalls || toolCalls.length === 0) {
+      // Re-stream the collected content
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            choices: [{ delta: { content: fullContent } }]
+          })}\n\n`));
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        }
+      });
+      
+      return new Response(stream, {
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        }
+      });
+    }
+
+    // Execute tool calls
+    const toolResults = [];
+    for (const toolCall of toolCalls) {
+      const functionName = toolCall.function.name;
+      const args = JSON.parse(toolCall.function.arguments || '{}');
+      
+      console.log(`Executing tool: ${functionName}`, args);
+      
+      let result: any = null;
+
+      try {
+        switch (functionName) {
+          case 'query_transactions': {
+            const query = supabase
+              .from('unified_transactions')
+              .select('*')
+              .gte('date', args.start_date)
+              .lte('date', args.end_date);
+            
+            if (args.type && args.type !== 'all') query.eq('type', args.type);
+            if (args.status) query.eq('status', args.status);
+            
+            const { data, error } = await query.order('date', { ascending: false }).limit(100);
+            if (error) throw error;
+            result = { transactions: data, count: data?.length || 0 };
+            break;
+          }
+
+          case 'query_profit_loss': {
+            const { data, error } = await supabase.rpc('get_profit_loss', {
+              p_start_period: args.start_period,
+              p_end_period: args.end_period || args.start_period
+            });
+            if (error) throw error;
+            
+            const revenue = data?.filter((x: any) => x.account_type === 'REVENUE')
+              .reduce((sum: number, x: any) => sum + Number(x.amount || 0), 0) || 0;
+            const cogs = data?.filter((x: any) => x.account_type === 'COGS')
+              .reduce((sum: number, x: any) => sum + Number(x.amount || 0), 0) || 0;
+            const opex = data?.filter((x: any) => x.account_type === 'OPEX')
+              .reduce((sum: number, x: any) => sum + Number(x.amount || 0), 0) || 0;
+            const otherIncome = data?.filter((x: any) => x.account_type === 'OTHER_INCOME')
+              .reduce((sum: number, x: any) => sum + Number(x.amount || 0), 0) || 0;
+            const otherExpense = data?.filter((x: any) => x.account_type === 'OTHER_EXPENSE')
+              .reduce((sum: number, x: any) => sum + Number(x.amount || 0), 0) || 0;
+            
+            result = {
+              period: args.start_period,
+              revenue,
+              cogs,
+              gross_profit: revenue - cogs,
+              opex,
+              operating_profit: revenue - cogs - opex,
+              other_income: otherIncome,
+              other_expense: otherExpense,
+              net_profit: revenue - cogs - opex + otherIncome - otherExpense,
+              details: data
+            };
+            break;
+          }
+
+          case 'query_balance_sheet': {
+            const { data, error } = await supabase.rpc('get_balance_sheet', {
+              p_as_of_date: args.as_of_date
+            });
+            if (error) throw error;
+            
+            const assets = data?.filter((x: any) => x.account_type === 'ASSET')
+              .reduce((sum: number, x: any) => sum + Number(x.balance || 0), 0) || 0;
+            const liabilities = data?.filter((x: any) => x.account_type === 'LIABILITY')
+              .reduce((sum: number, x: any) => sum + Number(x.balance || 0), 0) || 0;
+            const equity = data?.filter((x: any) => x.account_type === 'EQUITY')
+              .reduce((sum: number, x: any) => sum + Number(x.balance || 0), 0) || 0;
+            
+            result = {
+              as_of_date: args.as_of_date,
+              assets,
+              liabilities,
+              equity,
+              total_liabilities_equity: liabilities + equity,
+              details: data
+            };
+            break;
+          }
+
+          case 'query_cash_flow': {
+            const { data, error } = await supabase.rpc('get_cash_flow', {
+              p_start_date: args.start_date,
+              p_end_date: args.end_date
+            });
+            if (error) throw error;
+            result = { cash_flow: data };
+            break;
+          }
+
+          case 'query_aging_reports': {
+            const today = args.as_of_date || new Date().toISOString().slice(0, 10);
+            
+            if (args.report_type === 'AR' || args.report_type === 'both') {
+              const query = supabase
+                .from('sales_invoice')
+                .select('number, client_id, date, due_date, total, status')
+                .lt('due_date', today)
+                .not('status', 'in', '(PAID,DRAFT,VOIDED)');
+              
+              if (args.client_name) query.eq('client_id', args.client_name);
+              
+              const { data: arData } = await query.order('due_date');
+              result = { ar_aging: arData };
+            }
+            
+            if (args.report_type === 'AP' || args.report_type === 'both') {
+              const query = supabase
+                .from('vendor_bill')
+                .select('number, vendor_id, date, due_date, total, status')
+                .lt('due_date', today)
+                .not('status', 'in', '(PAID,DRAFT,VOIDED)');
+              
+              if (args.vendor_name) query.eq('vendor_id', args.vendor_name);
+              
+              const { data: apData } = await query.order('due_date');
+              result = { ...result, ap_aging: apData };
+            }
+            break;
+          }
+
+          case 'query_journal_details': {
+            const { data: journal, error: jError } = await supabase
+              .from('journal')
+              .select('*, journal_line(*)')
+              .eq('number', args.journal_number)
+              .single();
+            
+            if (jError) throw jError;
+            result = { journal };
+            break;
+          }
+
+          case 'query_vendor_expenses': {
+            const query = supabase
+              .from('vendor_bill')
+              .select('vendor_id, date, total, status')
+              .gte('date', args.start_date)
+              .lte('date', args.end_date)
+              .not('status', 'eq', 'DRAFT');
+            
+            if (args.vendor_name) query.eq('vendor_id', args.vendor_name);
+            
+            const { data, error } = await query;
+            if (error) throw error;
+            
+            const totalExpenses = data?.reduce((sum: number, b: any) => sum + Number(b.total || 0), 0) || 0;
+            result = { expenses: data, total: totalExpenses };
+            break;
+          }
+
+          case 'query_client_revenue': {
+            const query = supabase
+              .from('sales_invoice')
+              .select('client_id, date, total, status')
+              .gte('date', args.start_date)
+              .lte('date', args.end_date)
+              .not('status', 'eq', 'DRAFT');
+            
+            if (args.client_name) query.eq('client_id', args.client_name);
+            
+            const { data, error } = await query;
+            if (error) throw error;
+            
+            const totalRevenue = data?.reduce((sum: number, i: any) => sum + Number(i.total || 0), 0) || 0;
+            result = { revenue: data, total: totalRevenue };
+            break;
+          }
+
+          case 'query_project_profitability': {
+            // This would need a custom query - for now return placeholder
+            result = { message: 'Project profitability query not yet implemented' };
+            break;
+          }
+
+          case 'calculate_tax_position': {
+            const { data, error } = await supabase.rpc('calculate_vat_position', {
+              p_period: args.period
+            });
+            if (error) throw error;
+            result = { tax_position: data };
+            break;
+          }
+
+          case 'compare_periods': {
+            const { data: period1Data } = await supabase.rpc('get_profit_loss', {
+              p_start_period: args.period1,
+              p_end_period: args.period1
+            });
+            
+            const { data: period2Data } = await supabase.rpc('get_profit_loss', {
+              p_start_period: args.period2,
+              p_end_period: args.period2
+            });
+            
+            result = { period1: period1Data, period2: period2Data };
+            break;
+          }
+
+          case 'trend_analysis': {
+            // Multi-period analysis - simplified for now
+            result = { message: 'Trend analysis query not yet fully implemented' };
+            break;
+          }
+
+          case 'compliance_check': {
+            const query = supabase
+              .from('compliance_issue')
+              .select('*');
+            
+            if (args.severity && args.severity !== 'all') query.eq('severity', args.severity);
+            if (args.status && args.status !== 'all') query.eq('status', args.status);
+            
+            const { data, error } = await query.order('created_at', { ascending: false });
+            if (error) throw error;
+            result = { issues: data, count: data?.length || 0 };
+            break;
+          }
+
+          default:
+            result = { error: `Unknown tool: ${functionName}` };
+        }
+
+        toolResults.push({
+          tool_call_id: toolCall.id,
+          role: 'tool',
+          name: functionName,
+          content: JSON.stringify(result)
+        });
+      } catch (error) {
+        console.error(`Tool execution error for ${functionName}:`, error);
+        toolResults.push({
+          tool_call_id: toolCall.id,
+          role: 'tool',
+          name: functionName,
+          content: JSON.stringify({ error: error instanceof Error ? error.message : 'Tool execution failed' })
+        });
+      }
+    }
+
+    // Make a follow-up call to AI with tool results
+    const followUpMessages = [
+      { role: 'system', content: ENHANCED_SYSTEM_PROMPT + contextMessage },
+      ...(messages || []).slice(-10).map(m => ({ role: m.role, content: m.content })),
+      { role: 'assistant', content: null, tool_calls: toolCalls.map(tc => ({
+        id: tc.id,
+        type: 'function',
+        function: { name: tc.function.name, arguments: tc.function.arguments }
+      })) },
+      ...toolResults
+    ];
+
+    const followUpResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: followUpMessages,
+        stream: true,
+        temperature: 0.7
+      }),
+    });
+
+    if (!followUpResponse.ok) {
+      throw new Error(`Follow-up AI request failed: ${followUpResponse.status}`);
+    }
+
+    // Stream the final response
+    return new Response(followUpResponse.body, {
       headers: { 
         ...corsHeaders, 
         'Content-Type': 'text/event-stream',
