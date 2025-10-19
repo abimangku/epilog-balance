@@ -1552,6 +1552,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_next_journal_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_next_payment_number: {
         Args: Record<PropertyKey, never>
         Returns: string
