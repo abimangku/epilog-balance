@@ -127,6 +127,36 @@ Extract ALL visible text. If field not found, use null.`;
       };
     }
 
+    // Store parsed document in knowledge_base for AI context
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (supabaseUrl && supabaseKey && extractedData && Object.keys(extractedData).length > 0) {
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      
+      const { error: kbError } = await supabase
+        .from('knowledge_base')
+        .insert({
+          document_type: transactionType || 'invoice',
+          title: file.name,
+          content: JSON.stringify(extractedData, null, 2),
+          metadata: {
+            file_name: file.name,
+            file_size: file.size,
+            mime_type: file.type,
+            parsed_at: new Date().toISOString(),
+            transaction_type: transactionType,
+            source: 'parse-document'
+          }
+        });
+
+      if (kbError) {
+        console.error('Failed to store in knowledge_base:', kbError);
+      } else {
+        console.log(`Stored ${file.name} in knowledge_base`);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

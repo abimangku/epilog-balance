@@ -7,6 +7,9 @@ import { Dashboard } from "./components/Dashboard";
 import { COATable } from "./components/COATable";
 import { JournalForm } from "./components/JournalForm";
 import { AIAssistant } from "./components/AIAssistant";
+import { ComplianceDashboard } from "./components/ComplianceDashboard";
+import { CashFlowReport } from "./components/CashFlowReport";
+import { TaxRulesManagement } from "./components/TaxRulesManagement";
 import { InvoiceForm } from "./components/InvoiceForm";
 import { ReceiptForm } from "./components/ReceiptForm";
 import { ARAgingReport } from "./components/ARAgingReport";
@@ -40,7 +43,7 @@ import InvoiceList from "./components/InvoiceList";
 import InvoiceDetail from "./components/InvoiceDetail";
 import ReceiptList from "./components/ReceiptList";
 import AccountManagement from "./components/AccountManagement";
-import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp, Lock, Camera, PieChart, Users, Building2, FolderKanban, List, FileCheck, Settings, FileSpreadsheet, Landmark, ChevronDown } from "lucide-react";
+import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp, Lock, Camera, PieChart, Users, Building2, FolderKanban, List, FileCheck, Settings, FileSpreadsheet, Landmark, ChevronDown, AlertCircle } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const queryClient = new QueryClient();
@@ -124,6 +127,13 @@ const App = () => (
                 >
                   <Brain className="h-4 w-4" />
                   AI Assistant
+                </Link>
+                <Link 
+                  to="/compliance" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <AlertCircle className="h-4 w-4" />
+                  Compliance
                 </Link>
               </div>
               
@@ -260,6 +270,13 @@ const App = () => (
                   <FileSpreadsheet className="h-4 w-4" />
                   Tax Reports
                 </Link>
+                <Link 
+                  to="/reports/cash-flow" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  Cash Flow
+                </Link>
               </div>
               
               <div className="pt-4 mt-4 border-t border-sidebar-border">
@@ -286,6 +303,13 @@ const App = () => (
                     >
                       <Landmark className="h-4 w-4" />
                       Bank Accounts
+                    </Link>
+                    <Link 
+                      to="/settings/tax-rules" 
+                      className="flex items-center gap-3 px-4 py-2 pl-12 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                    >
+                      <FileSpreadsheet className="h-4 w-4" />
+                      Tax Rules
                     </Link>
                   </CollapsibleContent>
                 </Collapsible>
@@ -330,6 +354,9 @@ const App = () => (
               <Route path="/reports/tax" element={<ProtectedRoute><TaxReports /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><CompanySettings /></ProtectedRoute>} />
               <Route path="/settings/banks" element={<ProtectedRoute><BankAccountManagement /></ProtectedRoute>} />
+              <Route path="/settings/tax-rules" element={<ProtectedRoute><TaxRulesManagement /></ProtectedRoute>} />
+              <Route path="/compliance" element={<ProtectedRoute><ComplianceDashboard /></ProtectedRoute>} />
+              <Route path="/reports/cash-flow" element={<ProtectedRoute><CashFlowReport /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

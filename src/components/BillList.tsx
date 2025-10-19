@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useBills } from '@/hooks/useBills'
 import { Link } from 'react-router-dom'
 import { exportToExcel } from '@/lib/exportToExcel'
@@ -5,9 +6,24 @@ import { Download } from 'lucide-react'
 
 export function BillList() {
   const { data: bills, isLoading } = useBills()
+  const [vendorFilter, setVendorFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [categoryFilter, setCategoryFilter] = useState("all")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+
+  const filteredBills = bills?.filter(bill => {
+    const matchesVendor = vendorFilter === "all" || bill.vendor?.name === vendorFilter
+    const matchesStatus = statusFilter === "all" || bill.status === statusFilter
+    const matchesCategory = categoryFilter === "all" || bill.category === categoryFilter
+    const matchesDateRange = (!startDate || bill.date >= startDate) && (!endDate || bill.date <= endDate)
+    return matchesVendor && matchesStatus && matchesCategory && matchesDateRange
+  })
+
+  const uniqueVendors = Array.from(new Set(bills?.map(b => b.vendor?.name).filter(Boolean)))
 
   const handleExport = () => {
-    const exportData = bills?.map(bill => {
+    const exportData = filteredBills?.map(bill => {
       const totalPaid = bill.payments?.reduce(
         (sum: number, p: any) => sum + Number(p.amount) + Number(p.pph23_withheld),
         0
@@ -84,6 +100,52 @@ export function BillList() {
         </div>
       </div>
 
+      <div className="grid grid-cols-5 gap-4 mb-6">
+        <select
+          value={vendorFilter}
+          onChange={(e) => setVendorFilter(e.target.value)}
+          className="px-4 py-2 border border-input rounded-md bg-background text-foreground"
+        >
+          <option value="all">All Vendors</option>
+          {uniqueVendors.map(vendor => (
+            <option key={vendor as string} value={vendor as string}>{vendor}</option>
+          ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-4 py-2 border border-input rounded-md bg-background text-foreground"
+        >
+          <option value="all">All Statuses</option>
+          <option value="APPROVED">Approved</option>
+          <option value="PARTIAL">Partial</option>
+          <option value="PAID">Paid</option>
+        </select>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="px-4 py-2 border border-input rounded-md bg-background text-foreground"
+        >
+          <option value="all">All Categories</option>
+          <option value="COGS">COGS</option>
+          <option value="OPEX">OPEX</option>
+        </select>
+        <input
+          type="date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          placeholder="Start Date"
+          className="px-4 py-2 border border-input rounded-md bg-background text-foreground"
+        />
+        <input
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          placeholder="End Date"
+          className="px-4 py-2 border border-input rounded-md bg-background text-foreground"
+        />
+      </div>
+
       <div className="bg-card shadow rounded-lg overflow-hidden">
         <table className="w-full border-collapse">
           <thead>
@@ -99,7 +161,7 @@ export function BillList() {
             </tr>
           </thead>
           <tbody>
-            {bills.map((bill: any) => {
+            {filteredBills?.map((bill: any) => {
               const totalPaid = bill.payments?.reduce(
                 (sum: number, p: any) => sum + Number(p.amount) + Number(p.pph23_withheld),
                 0

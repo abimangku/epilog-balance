@@ -1473,6 +1473,24 @@ export type Database = {
           net_balance: number
         }[]
       }
+      get_balance_sheet: {
+        Args: { p_as_of_date: string }
+        Returns: {
+          account_code: string
+          account_name: string
+          account_type: string
+          balance: number
+        }[]
+      }
+      get_cash_flow: {
+        Args: { p_end_date: string; p_start_date: string }
+        Returns: {
+          account_code: string
+          account_name: string
+          amount: number
+          category: string
+        }[]
+      }
       get_next_bill_number: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1488,6 +1506,15 @@ export type Database = {
       get_next_receipt_number: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_profit_loss: {
+        Args: { p_end_period: string; p_start_period: string }
+        Returns: {
+          account_code: string
+          account_name: string
+          account_type: string
+          amount: number
+        }[]
       }
       get_users_with_roles: {
         Args: Record<PropertyKey, never>

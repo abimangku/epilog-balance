@@ -14,14 +14,21 @@ export default function InvoiceList() {
   const { data: invoices, isLoading } = useInvoices()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [clientFilter, setClientFilter] = useState('all')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
   const filtered = invoices?.filter((inv) => {
     const matchesSearch =
       inv.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       inv.client?.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || inv.status === statusFilter
-    return matchesSearch && matchesStatus
+    const matchesClient = clientFilter === 'all' || inv.client?.name === clientFilter
+    const matchesDateRange = (!startDate || inv.date >= startDate) && (!endDate || inv.date <= endDate)
+    return matchesSearch && matchesStatus && matchesClient && matchesDateRange
   })
+  
+  const uniqueClients = Array.from(new Set(invoices?.map(i => i.client?.name).filter(Boolean)))
 
   const getStatusColor = (status: string) => {
     switch (status) {
