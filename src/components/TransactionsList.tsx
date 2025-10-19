@@ -15,6 +15,7 @@ export function TransactionsList() {
   const [endDate, setEndDate] = useState('')
   const [type, setType] = useState('all')
   const [status, setStatus] = useState('all')
+  const [aiFilter, setAiFilter] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
 
   const { data: transactions, isLoading } = useTransactions({
@@ -22,6 +23,7 @@ export function TransactionsList() {
     endDate,
     type,
     status,
+    aiFilter,
     searchTerm,
   })
 
@@ -95,7 +97,7 @@ export function TransactionsList() {
       </div>
 
       <div className="bg-card rounded-lg border p-4 mb-6 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
           <div>
             <label className="text-sm font-medium mb-2 block">Start Date</label>
             <Input
@@ -146,6 +148,19 @@ export function TransactionsList() {
             </Select>
           </div>
           <div>
+            <label className="text-sm font-medium mb-2 block">Source</label>
+            <Select value={aiFilter} onValueChange={setAiFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All</SelectItem>
+                <SelectItem value="ai">🤖 AI Created</SelectItem>
+                <SelectItem value="manual">Manual</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <label className="text-sm font-medium mb-2 block">Search</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -187,6 +202,11 @@ export function TransactionsList() {
                   </TableCell>
                   <TableCell className="font-mono text-sm">
                     {transaction.number}
+                    {transaction.created_by_ai && (
+                      <span className="ml-2 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-1 rounded font-medium">
+                        🤖 AI
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="max-w-xs truncate">
                     {transaction.description}

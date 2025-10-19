@@ -6,6 +6,7 @@ interface TransactionFilters {
   endDate?: string
   type?: string
   status?: string
+  aiFilter?: string
   createdBy?: string
   searchTerm?: string
 }
@@ -32,6 +33,12 @@ export function useTransactions(filters?: TransactionFilters) {
       if (filters?.status && filters.status !== 'all') {
         query = query.ilike('status', filters.status)
       }
+      if (filters?.aiFilter === 'ai') {
+        query = query.eq('created_by_ai', true)
+      }
+      if (filters?.aiFilter === 'manual') {
+        query = query.eq('created_by_ai', false)
+      }
       if (filters?.searchTerm) {
         query = query.or(`number.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`)
       }
@@ -49,6 +56,7 @@ export function useTransactions(filters?: TransactionFilters) {
         amount: number
         created_by: string | null
         created_at: string
+        created_by_ai: boolean | null
         source_doc_type: string | null
         source_doc_id: string | null
       }>

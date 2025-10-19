@@ -1640,6 +1640,7 @@ export type Database = {
           amount: number | null
           created_at: string | null
           created_by: string | null
+          created_by_ai: boolean | null
           date: string | null
           description: string | null
           id: string | null
