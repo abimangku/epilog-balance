@@ -1,5 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+
+const journalSuggestionSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  period: z.string().regex(/^\d{4}-\d{2}$/),
+  description: z.string().min(1).max(1000),
+  lines: z.array(z.object({
+    account_code: z.string().regex(/^\d-\d{5}$/),
+    description: z.string().max(500).optional(),
+    debit: z.number().int().min(0),
+    credit: z.number().int().min(0),
+    project_code: z.string().regex(/^[A-Z0-9-]+$/).optional()
+  })).min(2).max(100)
+});
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,7 +26,18 @@ serve(async (req) => {
   }
 
   try {
-    const { messageId, conversationId, suggestionData } = await req.json();
+    const body = await req.json();
+    const { messageId, conversationId, suggestionData } = body;
+
+    // Validate input
+    const validationResult = journalSuggestionSchema.safeParse(suggestionData);
+    if (!validationResult.success) {
+      console.error('Validation failed:', validationResult.error);
+      return new Response(
+        JSON.stringify({ error: 'Invalid suggestion data', details: validationResult.error.errors }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) throw new Error('Missing authorization header');
