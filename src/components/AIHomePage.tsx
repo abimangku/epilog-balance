@@ -278,6 +278,19 @@ export function AIHomePage() {
         }
       }
 
+      // Validate: Warn if AI responded with text-based journal instead of tool call
+      if ((fullContent.includes('Suggested Journal Entry') || 
+           fullContent.includes('| Account |') || 
+           (fullContent.toLowerCase().includes('suggested') && fullContent.includes('debit') && fullContent.includes('credit'))) && 
+          !suggestionData) {
+        console.warn('AI responded with text journal instead of tool call');
+        toast({
+          title: 'Suggestion Format',
+          description: 'The AI described the transaction. Please say "create it" or "record it" to get an approval card.',
+          variant: 'default'
+        });
+      }
+
       // Save assistant message
       if (fullContent || suggestionData) {
         const metadata: any = {};
