@@ -10,7 +10,7 @@ export function TaxReports() {
   const { data: ppnData } = usePPNReport(reportType === 'ppn' ? period : '')
 
   const handleExportExcel = () => {
-    if (reportType === 'pph23' && pph23Data) {
+    if (reportType === 'pph23' && pph23Data && Array.isArray(pph23Data)) {
       const rows = [
         ['EPILOG CREATIVE'],
         ['PPh 23 MONTHLY REPORT'],
@@ -37,13 +37,13 @@ export function TaxReports() {
       })
 
       rows.push([])
-      rows.push(['TOTAL', '', '', '', totalBase, '', totalWithheld])
+      rows.push(['TOTAL', '', '', '', totalBase.toString(), '', totalWithheld.toString()])
 
       const ws = XLSX.utils.aoa_to_sheet(rows)
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, ws, 'PPh 23')
       XLSX.writeFile(wb, `PPh23_${period}.xlsx`)
-    } else if (reportType === 'ppn' && ppnData) {
+    } else if (reportType === 'ppn' && ppnData && Array.isArray(ppnData)) {
       const rows = [
         ['EPILOG CREATIVE'],
         ['PPN (VAT) MONTHLY REPORT'],
@@ -71,7 +71,7 @@ export function TaxReports() {
       })
 
       rows.push([])
-      rows.push(['TOTAL', '', '', '', '', '', totalBase, totalVAT])
+      rows.push(['TOTAL', '', '', '', '', '', totalBase.toString(), totalVAT.toString()])
 
       const ws = XLSX.utils.aoa_to_sheet(rows)
       const wb = XLSX.utils.book_new()
@@ -81,6 +81,7 @@ export function TaxReports() {
   }
 
   const data = reportType === 'pph23' ? pph23Data : ppnData
+  const hasData = data && Array.isArray(data) && data.length > 0
 
   return (
     <div className="p-6">
@@ -88,7 +89,7 @@ export function TaxReports() {
         <h1 className="text-3xl font-bold text-foreground">Tax Filing Reports</h1>
         <button
           onClick={handleExportExcel}
-          disabled={!data || data.length === 0}
+          disabled={!hasData}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
           📊 Export to Excel
@@ -121,7 +122,7 @@ export function TaxReports() {
       </div>
 
       {/* PPh 23 Report */}
-      {reportType === 'pph23' && pph23Data && (
+      {reportType === 'pph23' && pph23Data && Array.isArray(pph23Data) && (
         <div className="bg-card rounded-lg shadow overflow-hidden">
           <table className="w-full border-collapse">
             <thead>
@@ -177,7 +178,7 @@ export function TaxReports() {
       )}
 
       {/* PPN Report */}
-      {reportType === 'ppn' && ppnData && (
+      {reportType === 'ppn' && ppnData && Array.isArray(ppnData) && (
         <div className="bg-card rounded-lg shadow overflow-hidden">
           <table className="w-full border-collapse">
             <thead>

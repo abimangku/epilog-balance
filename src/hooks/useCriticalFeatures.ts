@@ -14,7 +14,7 @@ export function useJournals(filters?: {
     queryKey: ['journals', filters],
     queryFn: async () => {
       let query = supabase
-        .from('journal_register')
+        .from('journal_register' as any)
         .select('*')
 
       if (filters?.period) {
@@ -32,7 +32,7 @@ export function useJournals(filters?: {
       const { data, error } = await query
 
       if (error) throw error
-      return data
+      return data as any[]
     },
   })
 }
@@ -73,13 +73,13 @@ export function useVoidJournal() {
 
       // Get next journal number
       const { data: reversalNumber } = await supabase
-        .rpc('get_next_number', { p_entity_type: 'journal' })
+        .rpc('get_next_number' as any, { p_entity_type: 'journal' })
 
       // Create reversing journal
       const { data: reversal, error: reversalError } = await supabase
         .from('journal')
         .insert({
-          number: reversalNumber,
+          number: reversalNumber as any,
           date: new Date().toISOString().split('T')[0],
           description: `VOID: ${original.description}`,
           period: new Date().toISOString().slice(0, 7),
@@ -116,7 +116,7 @@ export function useVoidJournal() {
           reversed_by: reversal.id,
           voided_at: new Date().toISOString(),
           void_reason: reason,
-        })
+        } as any)
         .eq('id', journalId)
 
       if (voidError) throw voidError
@@ -138,7 +138,7 @@ export function useGeneralLedger(accountCode: string, period?: string) {
     queryKey: ['general-ledger', accountCode, period],
     queryFn: async () => {
       let query = supabase
-        .from('general_ledger')
+        .from('general_ledger' as any)
         .select('*')
         .eq('account_code', accountCode)
         .order('date')
@@ -154,7 +154,7 @@ export function useGeneralLedger(accountCode: string, period?: string) {
 
       // Calculate running balance
       let runningBalance = 0
-      const withBalance = data.map(item => {
+      const withBalance = (data as any[]).map((item: any) => {
         if (item.account_type === 'ASSET' || item.account_type === 'COGS' || item.account_type === 'OPEX') {
           runningBalance += Number(item.debit) - Number(item.credit)
         } else {
@@ -178,9 +178,9 @@ export function useCompanySettings() {
     queryKey: ['company-settings'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('company_settings')
+        .from('company_settings' as any)
         .select('*')
-        .single()
+        .maybeSingle()
 
       if (error) throw error
       return data
@@ -194,7 +194,7 @@ export function useUpdateCompanySettings() {
   return useMutation({
     mutationFn: async (settings: any) => {
       const { data, error } = await supabase
-        .from('company_settings')
+        .from('company_settings' as any)
         .update(settings)
         .eq('id', settings.id)
         .select()
@@ -218,9 +218,9 @@ export function useDashboardMetrics() {
     queryKey: ['dashboard-metrics'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('dashboard_metrics')
+        .from('dashboard_metrics' as any)
         .select('*')
-        .single()
+        .maybeSingle()
 
       if (error) throw error
       return data
@@ -238,10 +238,10 @@ export function usePPh23Report(period: string) {
     queryKey: ['pph23-report', period],
     queryFn: async () => {
       const { data, error } = await supabase
-        .rpc('get_pph23_report', { p_period: period })
+        .rpc('get_pph23_report' as any, { p_period: period })
 
       if (error) throw error
-      return data
+      return data as any[]
     },
     enabled: !!period,
   })
@@ -252,10 +252,10 @@ export function usePPNReport(period: string) {
     queryKey: ['ppn-report', period],
     queryFn: async () => {
       const { data, error } = await supabase
-        .rpc('get_ppn_report', { p_period: period })
+        .rpc('get_ppn_report' as any, { p_period: period })
 
       if (error) throw error
-      return data
+      return data as any[]
     },
     enabled: !!period,
   })
@@ -270,7 +270,7 @@ export function useActivityLog(entityType?: string, entityId?: string) {
     queryKey: ['activity-log', entityType, entityId],
     queryFn: async () => {
       let query = supabase
-        .from('audit_log')
+        .from('audit_log' as any)
         .select('*')
         .order('created_at', { ascending: false })
 
@@ -285,7 +285,7 @@ export function useActivityLog(entityType?: string, entityId?: string) {
       const { data, error } = await query.limit(100)
 
       if (error) throw error
-      return data
+      return data as any[]
     },
   })
 }
