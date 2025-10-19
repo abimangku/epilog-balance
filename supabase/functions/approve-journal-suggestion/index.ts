@@ -9,8 +9,8 @@ const journalSuggestionSchema = z.object({
   lines: z.array(z.object({
     account_code: z.string().regex(/^\d-\d{5}$/),
     description: z.string().max(500).optional(),
-    debit: z.number().int().min(0),
-    credit: z.number().int().min(0),
+    debit: z.number().min(0).transform(val => Math.round(val)),
+    credit: z.number().min(0).transform(val => Math.round(val)),
     project_code: z.string().regex(/^[A-Z0-9-]+$/).optional()
   })).min(2).max(100)
 });

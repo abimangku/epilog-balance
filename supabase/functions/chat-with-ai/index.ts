@@ -85,6 +85,10 @@ INDONESIAN TAX RULES YOU MUST ENFORCE:
 4. Security guard payments are OPEX (5-xxxx series), not COGS
 5. Validate all account codes exist before suggesting them
 6. Double-check all debit and credit amounts before sending suggestions
+7. **AMOUNTS MUST BE WHOLE NUMBERS (integers) - Indonesian Rupiah has no decimal places**
+   - Round all amounts to the nearest whole number before suggesting
+   - Example: Rp 315.789,47 → 315789 (not 315789.47)
+   - Tax calculations: Round the final tax amount, not intermediate steps
 
 **When user mentions a bank name (e.g., "BCA", "Mandiri"):**
 - Look up the bank account code from Available Bank Accounts context
@@ -444,7 +448,7 @@ serve(async (req) => {
             type: 'function',
             function: {
               name: 'suggest_journal',
-              description: 'Use this tool WHENEVER user wants to record: owner deposits, capital contributions, manual adjustments, bank transfers, accruals, expense allocations, or any manual journal entry. This creates an interactive approval card with Approve/Reject buttons. REQUIRED when user says "catat", "record", "create", "ok bisa catat", or confirms they want to save a transaction.',
+              description: 'Use this tool WHENEVER user wants to record: owner deposits, capital contributions, manual adjustments, bank transfers, accruals, expense allocations, or any manual journal entry. This creates an interactive approval card with Approve/Reject buttons. REQUIRED when user says "catat", "record", "create", "ok bisa catat", or confirms they want to save a transaction. IMPORTANT: All amounts (debit/credit) must be whole numbers (integers) with no decimals - Indonesian Rupiah has no decimal places.',
               parameters: {
                 type: 'object',
                 properties: {
@@ -459,8 +463,8 @@ serve(async (req) => {
                         account_code: { type: 'string' },
                         account_name: { type: 'string' },
                         description: { type: 'string' },
-                        debit: { type: 'number' },
-                        credit: { type: 'number' },
+                        debit: { type: 'number', description: 'Whole number only (no decimals)' },
+                        credit: { type: 'number', description: 'Whole number only (no decimals)' },
                         project_code: { type: 'string' }
                       }
                     }
