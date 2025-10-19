@@ -20,3 +20,12 @@ verify_jwt = true
 
 [functions.approve-payment-suggestion]
 verify_jwt = true
+
+[functions.create-vendor-entity]
+verify_jwt = true
+
+[functions.create-client-entity]
+verify_jwt = true
+
+[functions.create-project-entity]
+verify_jwt = true

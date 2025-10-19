@@ -125,6 +125,52 @@ ALWAYS call the tool function so the user gets an interactive approval card with
 - User: "ok" or "yes" or "please create" (after transaction discussion) → YOU MUST call the appropriate tool
 - User: "record this invoice" → YOU MUST call suggest_invoice
 
+**PROACTIVE ASSISTANT BEHAVIOR:**
+
+When suggesting transactions, ALWAYS verify prerequisites first:
+
+1. **Before suggesting a bill:**
+   - Check if vendor exists in Known Vendors list
+   - If NOT found: "I don't see [Vendor Name] in the system. Would you like me to create it? I'll need:
+     - Vendor code (or I can generate one)
+     - Tax ID (NPWP) if available
+     - Whether they provide Faktur Pajak (PKP status)
+     - Whether they're subject to PPh 23 withholding"
+   
+2. **Before suggesting an invoice:**
+   - Check if client exists in Known Clients list
+   - If NOT found: "I don't see [Client Name] yet. Let me create it. I'll need:
+     - Client code (or generate from name)
+     - Do they withhold PPh 23 on our invoices?"
+
+3. **Before suggesting transactions with projects:**
+   - Check if project exists in Known Projects
+   - If NOT found: "Should I create project [Name]? I'll need:
+     - Project code
+     - Client (if applicable)
+     - Start/end dates"
+
+4. **When data is missing from documents:**
+   - Extract what you can from OCR
+   - Ask specific questions for missing details
+   - Suggest based on vendor name/history
+
+**ERROR HANDLING:**
+- If approval fails due to missing vendor/client/project:
+  - Parse the error response
+  - Immediately offer: "It looks like [Entity] doesn't exist yet. Would you like me to create it?"
+  - Collect required details through conversation
+  - Use create_vendor, create_client, or create_project tools
+  - Then retry the original suggestion
+
+**CONVERSATION FLOW EXAMPLE:**
+User: "Catat bill dari PT Media Digital Rp 10juta untuk ads"
+AI: "I'll help you record that bill. I don't see PT Media Digital in the vendor list yet. Let me create it first. Is PT Media Digital:
+1. A PKP (provides Faktur Pajak)?
+2. Subject to 2% PPh 23 withholding?"
+User: "Yes PKP, yes PPh 23"
+AI: [calls create_vendor tool, then calls suggest_bill tool]
+
 CONVERSATION GUIDELINES:
 - Be conversational and helpful, not robotic
 - Ask clarifying questions when details are missing (date, amounts, accounts)
@@ -132,6 +178,7 @@ CONVERSATION GUIDELINES:
 - Once details are clear and user wants to record → IMMEDIATELY use the appropriate tool
 - Always warn about potential tax/compliance risks
 - Use IDR currency format with thousands separators
+- Proactively offer to create missing entities before they cause errors
 
 Remember: Indonesian businesses MUST comply with tax withholding or face penalties. Always err on the side of caution.`;
 
@@ -213,6 +260,32 @@ serve(async (req) => {
     if (vendors && vendors.length > 0) {
       contextParts.push(`Known Vendors:\n${vendors.map(v => 
         `- ${v.name} (${v.code}) - PPh23: ${v.subject_to_pph23 ? 'Yes' : 'No'}, PKP: ${v.provides_faktur_pajak ? 'Yes' : 'No'}`
+      ).join('\n')}`);
+    }
+
+    // Get clients for name matching
+    const { data: clients } = await supabase
+      .from('client')
+      .select('name, code, withholds_pph23')
+      .eq('is_active', true)
+      .limit(50);
+    
+    if (clients && clients.length > 0) {
+      contextParts.push(`Known Clients:\n${clients.map(c => 
+        `- ${c.name} (${c.code}) - Withholds PPh23: ${c.withholds_pph23 ? 'Yes' : 'No'}`
+      ).join('\n')}`);
+    }
+
+    // Get projects
+    const { data: projects } = await supabase
+      .from('project')
+      .select('name, code')
+      .eq('is_active', true)
+      .limit(50);
+    
+    if (projects && projects.length > 0) {
+      contextParts.push(`Known Projects:\n${projects.map(p => 
+        `- ${p.name} (${p.code})`
       ).join('\n')}`);
     }
 
@@ -391,6 +464,59 @@ serve(async (req) => {
                   description: { type: 'string' }
                 },
                 required: ['bill_number', 'vendor_name', 'date', 'amount', 'pph23_withheld', 'bank_account_code', 'bank_account_name']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'create_vendor',
+              description: 'Create a new vendor when user confirms they want to add one. Use this before suggesting bills if vendor doesn\'t exist.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', description: 'Vendor legal name' },
+                  code: { type: 'string', description: 'Vendor code (optional, will auto-generate)' },
+                  taxId: { type: 'string', description: 'NPWP number if available' },
+                  providesFakturPajak: { type: 'boolean', description: 'Is vendor a PKP?' },
+                  subjectToPph23: { type: 'boolean', description: 'Subject to 2% PPh 23 withholding?' }
+                },
+                required: ['name']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'create_client',
+              description: 'Create a new client when user confirms. Use before suggesting invoices.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  code: { type: 'string' },
+                  taxId: { type: 'string' },
+                  witholdsPph23: { type: 'boolean', description: 'Does client withhold PPh 23 on our invoices?' }
+                },
+                required: ['name']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'create_project',
+              description: 'Create a new project when user confirms. Use before allocating COGS.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  code: { type: 'string' },
+                  clientName: { type: 'string', description: 'Associated client if any' },
+                  startDate: { type: 'string' },
+                  endDate: { type: 'string' }
+                },
+                required: ['name', 'code']
               }
             }
           }

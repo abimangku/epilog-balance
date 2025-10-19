@@ -4,10 +4,13 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Paperclip, Send, Plus, MessageSquare, Loader2 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { toast as toastLegacy } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import ReactMarkdown from 'react-markdown';
 import { SuggestionCard } from './SuggestionCard';
+import { AIActionCard } from './AIActionCard';
+import { AIProgressIndicator } from './AIProgressIndicator';
 
 export function AIAssistant() {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
@@ -15,6 +18,7 @@ export function AIAssistant() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [progressSteps, setProgressSteps] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -38,10 +42,8 @@ export function AIAssistant() {
       // Check authentication
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast({
-          title: 'Authentication Required',
-          description: 'Please log in to use AI Assistant',
-          variant: 'destructive'
+        toast.error('Authentication Required', {
+          description: 'Please log in to use AI Assistant'
         });
         setIsStreaming(false);
         return;
@@ -128,13 +130,68 @@ export function AIAssistant() {
               setStreamingContent(fullContent);
             }
 
-            // Parse tool calls for suggestions
+            // Parse tool calls for entity creation and suggestions
             if (toolCalls && toolCalls.length > 0) {
               const toolCall = toolCalls[0];
               if (toolCall.function?.name && toolCall.function?.arguments) {
                 try {
                   const funcName = toolCall.function.name;
                   const args = JSON.parse(toolCall.function.arguments);
+                  
+                  // Handle entity creation tool calls
+                  if (funcName === 'create_vendor' || funcName === 'create_client' || funcName === 'create_project') {
+                    setProgressSteps([{ label: `Creating ${funcName.split('_')[1]}...`, status: 'in_progress' }]);
+                    
+                    const { data: entityData, error: entityError } = await supabase.functions.invoke(
+                      `${funcName}-entity`,
+                      { body: args }
+                    );
+                    
+                    setProgressSteps([]);
+                    
+                    if (!entityError && entityData?.success) {
+                      // Show success toast
+                      const entityType = funcName.split('_')[1];
+                      toast.success(`${entityType.charAt(0).toUpperCase() + entityType.slice(1)} Created`, {
+                        description: entityData.message,
+                      });
+                      
+                      // Insert action card into chat
+                      const actionData: any = {};
+                      if (funcName === 'create_vendor') {
+                        actionData.vendor_name = entityData.vendor.name;
+                        actionData.vendor_code = entityData.vendor.code;
+                        actionData.tax_id = entityData.vendor.tax_id;
+                        actionData.provides_faktur_pajak = entityData.vendor.provides_faktur_pajak;
+                        actionData.subject_to_pph23 = entityData.vendor.subject_to_pph23;
+                      } else if (funcName === 'create_client') {
+                        actionData.client_name = entityData.client.name;
+                        actionData.client_code = entityData.client.code;
+                        actionData.tax_id = entityData.client.tax_id;
+                        actionData.withholds_pph23 = entityData.client.withholds_pph23;
+                      } else if (funcName === 'create_project') {
+                        actionData.project_name = entityData.project.name;
+                        actionData.project_code = entityData.project.code;
+                        actionData.client_name = args.clientName;
+                      }
+                      
+                      await supabase.from('conversation_message').insert({
+                        conversation_id: selectedConversation,
+                        role: 'assistant',
+                        content: '',
+                        metadata: {
+                          action_type: `${funcName.split('_')[1]}_created`,
+                          action_data: actionData,
+                          timestamp: new Date().toISOString()
+                        }
+                      });
+                    } else {
+                      toast.error('Failed to Create Entity', {
+                        description: entityError?.message || 'An error occurred'
+                      });
+                    }
+                    continue;
+                  }
                   
                   // Validate journal entries are balanced
                   if (funcName === 'suggest_journal') {
@@ -143,7 +200,6 @@ export function AIAssistant() {
                     
                     if (Math.abs(totalDebit - totalCredit) > 0.01) {
                       console.error('Unbalanced journal detected:', { totalDebit, totalCredit, args });
-                      // Don't store unbalanced suggestions
                       continue;
                     }
                   }
@@ -203,13 +259,12 @@ export function AIAssistant() {
 
     } catch (error) {
       console.error('Send message error:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to send message',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: error instanceof Error ? error.message : 'Failed to send message'
       });
     } finally {
       setIsStreaming(false);
+      setProgressSteps([]);
     }
   };
 
@@ -221,7 +276,7 @@ export function AIAssistant() {
       .single();
 
     if (error) {
-      toast({ title: 'Error', description: 'Failed to create conversation', variant: 'destructive' });
+      toast.error('Error', { description: 'Failed to create conversation' });
       return;
     }
 
@@ -231,7 +286,7 @@ export function AIAssistant() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setAttachedFiles(Array.from(e.target.files));
-      toast({ title: 'Files attached', description: `${e.target.files.length} file(s) ready to upload` });
+      toast.success('Files attached', { description: `${e.target.files.length} file(s) ready to upload` });
     }
   };
 
@@ -242,36 +297,61 @@ export function AIAssistant() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast({ title: 'Error', description: 'Authentication required', variant: 'destructive' });
+        toast.error('Error', { description: 'Authentication required' });
         return;
       }
 
       const suggestionType = message.metadata.suggestion_type;
       const functionName = `approve-${suggestionType}-suggestion`;
 
-      const { data, error } = await supabase.functions.invoke(functionName, {
-        body: {
-          messageId,
-          conversationId: selectedConversation,
-          suggestionData: message.metadata.suggested_data
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            messageId,
+            conversationId: selectedConversation,
+            suggestionData: message.metadata.suggested_data
+          })
         }
-      });
+      );
 
-      if (error) throw error;
+      const data = await response.json();
 
-      toast({
-        title: 'Success',
-        description: `${suggestionType.charAt(0).toUpperCase() + suggestionType.slice(1)} created successfully`,
+      if (!response.ok) {
+        // Handle missing entity errors with recovery
+        if (data.error === 'missing_vendor' || data.error === 'missing_client') {
+          const entityType = data.error === 'missing_vendor' ? 'vendor' : 'client';
+          const entityName = data.vendor_name || data.client_name;
+          
+          toast.error(`${entityType.charAt(0).toUpperCase() + entityType.slice(1)} Not Found`, {
+            description: `"${entityName}" doesn't exist. Please ask AI to create it.`,
+            action: {
+              label: 'Ask AI',
+              onClick: () => {
+                setInputMessage(`Please create ${entityType} "${entityName}" and then retry the ${suggestionType}.`);
+              }
+            }
+          });
+          return;
+        }
+        throw new Error(data.error || 'Failed to approve suggestion');
+      }
+
+      toast.success('Success', {
+        description: `${suggestionType.charAt(0).toUpperCase() + suggestionType.slice(1)} created successfully`
       });
 
       // Refresh messages
       sendMessage.mutate({ conversationId: selectedConversation, message: '', attachments: [] });
     } catch (error) {
       console.error('Approval error:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to approve suggestion',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: error instanceof Error ? error.message : 'Failed to approve suggestion'
       });
     }
   };
@@ -288,10 +368,10 @@ export function AIAssistant() {
         })
         .eq('id', messageId);
 
-      toast({ title: 'Suggestion rejected' });
+      toast.success('Suggestion rejected');
       sendMessage.mutate({ conversationId: selectedConversation, message: '', attachments: [] });
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to reject suggestion', variant: 'destructive' });
+      toast.error('Error', { description: 'Failed to reject suggestion' });
     }
   };
 
@@ -385,7 +465,15 @@ export function AIAssistant() {
               key={msg.id}
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              {msg.role === 'assistant' && msg.metadata?.suggestion_type ? (
+              {msg.role === 'assistant' && msg.metadata?.action_type ? (
+                <div className="max-w-[80%]">
+                  <AIActionCard
+                    actionType={msg.metadata.action_type}
+                    entityData={msg.metadata.action_data}
+                    timestamp={msg.metadata.timestamp}
+                  />
+                </div>
+              ) : msg.role === 'assistant' && msg.metadata?.suggestion_type ? (
                 <div className="max-w-[80%] w-full">
                   {msg.content && (
                     <div className="mb-2 rounded-lg p-4 bg-muted">
@@ -425,20 +513,22 @@ export function AIAssistant() {
           ))}
           
           {/* Streaming message */}
-          {isStreaming && streamingContent && (
+          {isStreaming && (
             <div className="flex justify-start">
-              <div className="max-w-[80%] rounded-lg p-4 bg-muted">
-                <div className="prose prose-sm max-w-none">
-                  <ReactMarkdown>{streamingContent}</ReactMarkdown>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {isStreaming && !streamingContent && (
-            <div className="flex justify-start">
-              <div className="rounded-lg p-4 bg-muted">
-                <Loader2 className="h-5 w-5 animate-spin" />
+              <div className="max-w-[80%]">
+                {progressSteps.length > 0 ? (
+                  <AIProgressIndicator steps={progressSteps} message="Processing..." />
+                ) : streamingContent ? (
+                  <div className="rounded-lg p-4 bg-muted">
+                    <div className="prose prose-sm max-w-none">
+                      <ReactMarkdown>{streamingContent}</ReactMarkdown>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg p-4 bg-muted">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  </div>
+                )}
               </div>
             </div>
           )}

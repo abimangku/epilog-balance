@@ -55,31 +55,25 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) throw new Error('Unauthorized');
 
-    // Find or create vendor
-    let vendor;
-    const { data: existingVendor } = await supabase
+    // Find vendor - DO NOT auto-create
+    const { data: vendor } = await supabase
       .from('vendor')
       .select('*')
       .or(`name.ilike.%${suggestionData.vendor_name}%${suggestionData.vendor_code ? `,code.eq.${suggestionData.vendor_code}` : ''}`)
       .limit(1)
       .maybeSingle();
 
-    if (existingVendor) {
-      vendor = existingVendor;
-    } else {
-      // Create new vendor
-      const { data: newVendor, error: createError } = await supabase
-        .from('vendor')
-        .insert({
-          name: suggestionData.vendor_name,
-          code: suggestionData.vendor_code || suggestionData.vendor_name.substring(0, 10).toUpperCase().replace(/\s+/g, '-'),
-          is_active: true
-        })
-        .select()
-        .single();
-
-      if (createError) throw createError;
-      vendor = newVendor;
+    if (!vendor) {
+      console.log('Vendor not found:', suggestionData.vendor_name);
+      return new Response(
+        JSON.stringify({ 
+          error: 'missing_vendor',
+          vendor_name: suggestionData.vendor_name,
+          vendor_code: suggestionData.vendor_code,
+          message: `Vendor "${suggestionData.vendor_name}" not found. Please create it first.`
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Find project if specified
