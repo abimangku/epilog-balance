@@ -1,5 +1,5 @@
-import { useParams, Link } from 'react-router-dom'
-import { useJournal, useActivityLog, useVoidJournal } from '@/hooks/useCriticalFeatures'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useJournal, useActivityLog, useVoidJournal, useDeleteJournal } from '@/hooks/useCriticalFeatures'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,9 +12,11 @@ import FileUpload from './FileUpload'
 
 export function JournalDetail() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { data: journal, isLoading } = useJournal(id!)
   const { data: activities } = useActivityLog('journal', id)
   const voidJournal = useVoidJournal()
+  const deleteJournal = useDeleteJournal()
   const [voidReason, setVoidReason] = useState('')
   const [isVoidDialogOpen, setIsVoidDialogOpen] = useState(false)
 
@@ -44,6 +46,20 @@ export function JournalDetail() {
     }
   }
 
+  const handleDelete = async () => {
+    if (!confirm(`Delete draft journal ${journal?.number}? This cannot be undone.`)) {
+      return
+    }
+
+    try {
+      await deleteJournal.mutateAsync(id!)
+      toast({ title: 'Success', description: 'Draft journal deleted successfully' })
+      navigate('/journals')
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' })
+    }
+  }
+
   if (isLoading) {
     return <div className="p-6 text-foreground">Loading journal...</div>
   }
@@ -61,6 +77,11 @@ export function JournalDetail() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-foreground">Journal Entry: {journal.number}</h1>
         <div className="flex gap-2">
+          {journal.status === 'DRAFT' && (
+            <Button variant="destructive" onClick={handleDelete}>
+              Delete Draft
+            </Button>
+          )}
           {journal.status === 'POSTED' && !(journal as any).voided_at && (
             <Dialog open={isVoidDialogOpen} onOpenChange={setIsVoidDialogOpen}>
               <DialogTrigger asChild>

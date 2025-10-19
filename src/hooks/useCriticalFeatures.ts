@@ -129,6 +129,47 @@ export function useVoidJournal() {
   })
 }
 
+export function useDeleteJournal() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (journalId: string) => {
+      // First check if journal is DRAFT
+      const { data: journal, error: checkError } = await supabase
+        .from('journal')
+        .select('status')
+        .eq('id', journalId)
+        .single()
+
+      if (checkError) throw checkError
+      if (journal?.status !== 'DRAFT') {
+        throw new Error('Only DRAFT journals can be deleted. Use Void for posted journals.')
+      }
+
+      // Delete lines first (foreign key constraint)
+      const { error: linesError } = await supabase
+        .from('journal_line')
+        .delete()
+        .eq('journal_id', journalId)
+
+      if (linesError) throw linesError
+
+      // Delete journal
+      const { error: journalError } = await supabase
+        .from('journal')
+        .delete()
+        .eq('id', journalId)
+
+      if (journalError) throw journalError
+
+      return { success: true }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['journals'] })
+    },
+  })
+}
+
 // =============================================
 // GENERAL LEDGER
 // =============================================

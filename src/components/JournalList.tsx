@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useJournals, useVoidJournal } from '@/hooks/useCriticalFeatures'
+import { useJournals, useVoidJournal, useDeleteJournal } from '@/hooks/useCriticalFeatures'
 import { Link } from 'react-router-dom'
 import { useToast } from '@/hooks/use-toast'
 import { exportToExcel } from '@/lib/exportToExcel'
@@ -14,6 +14,7 @@ export function JournalList() {
 
   const { data: journals } = useJournals({ period, searchTerm, status })
   const voidJournal = useVoidJournal()
+  const deleteJournal = useDeleteJournal()
 
   const handleVoid = async (journalId: string, journalNumber: string) => {
     const reason = prompt(`Void journal ${journalNumber}? Enter reason:`)
@@ -29,6 +30,26 @@ export function JournalList() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : 'Failed to void journal',
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDelete = async (journalId: string, journalNumber: string) => {
+    if (!confirm(`Delete draft journal ${journalNumber}? This cannot be undone.`)) {
+      return
+    }
+
+    try {
+      await deleteJournal.mutateAsync(journalId)
+      toast({
+        title: "Journal deleted",
+        description: `Draft journal ${journalNumber} has been deleted.`,
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to delete journal',
         variant: "destructive",
       })
     }
@@ -163,7 +184,18 @@ export function JournalList() {
                   >
                     View
                   </Link>
-                  {!journal.voided_at && !journal.reversed_by && (
+                  {journal.status === 'DRAFT' && (
+                    <>
+                      {' | '}
+                      <button
+                        onClick={() => handleDelete(journal.id, journal.number)}
+                        className="text-destructive hover:underline text-sm"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                  {journal.status === 'POSTED' && !journal.voided_at && !journal.reversed_by && (
                     <>
                       {' | '}
                       <button
