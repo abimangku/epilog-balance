@@ -13,7 +13,14 @@ const journalSuggestionSchema = z.object({
     credit: z.number().min(0).transform(val => Math.round(val)),
     project_code: z.string().regex(/^[A-Z0-9-]+$/).optional()
   })).min(2).max(100)
-});
+}).transform((data) => ({
+  ...data,
+  lines: data.lines.map(line => ({
+    ...line,
+    debit: Math.round(line.debit),
+    credit: Math.round(line.credit)
+  }))
+}));
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,6 +45,8 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const validatedData = validationResult.data;
     
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) throw new Error('Missing authorization header');
@@ -54,8 +63,8 @@ serve(async (req) => {
     const { data: nextNum } = await supabase.rpc('get_next_journal_number');
 
     // Validate journal is balanced
-    const totalDebit = suggestionData.lines.reduce((sum: number, line: any) => sum + (line.debit || 0), 0);
-    const totalCredit = suggestionData.lines.reduce((sum: number, line: any) => sum + (line.credit || 0), 0);
+    const totalDebit = validatedData.lines.reduce((sum: number, line: any) => sum + (line.debit || 0), 0);
+    const totalCredit = validatedData.lines.reduce((sum: number, line: any) => sum + (line.credit || 0), 0);
     
     if (Math.abs(totalDebit - totalCredit) > 0.01) {
       throw new Error(
@@ -64,7 +73,7 @@ serve(async (req) => {
     }
 
     // Validate account codes exist
-    for (const line of suggestionData.lines) {
+    for (const line of validatedData.lines) {
       const { data: account, error: accountError } = await supabase
         .from('account')
         .select('code')
@@ -81,9 +90,9 @@ serve(async (req) => {
       .from('journal')
       .insert({
         number: nextNum,
-        date: suggestionData.date,
-        period: suggestionData.period,
-        description: suggestionData.description,
+        date: validatedData.date,
+        period: validatedData.period,
+        description: validatedData.description,
         status: 'POSTED',
         created_by_ai: true,
         created_by: user.id
@@ -94,7 +103,7 @@ serve(async (req) => {
     if (journalError) throw journalError;
 
     // Create journal lines
-    const journalLines = suggestionData.lines.map((line: any, index: number) => ({
+    const journalLines = validatedData.lines.map((line: any, index: number) => ({
       journal_id: journal.id,
       account_code: line.account_code,
       description: line.description,
