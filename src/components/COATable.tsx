@@ -3,7 +3,7 @@ import { ACCOUNT_TYPE_LABELS } from '@/lib/types'
 import { Loader2 } from 'lucide-react'
 
 export function COATable() {
-  const { accounts, isLoading } = useAccountsByType()
+  const { data: accounts, isLoading } = useAccountsByType()
 
   if (isLoading) {
     return (
@@ -17,7 +17,7 @@ export function COATable() {
     <div className="p-6 space-y-8">
       <h1 className="text-3xl font-bold text-foreground">Chart of Accounts</h1>
 
-      {Object.entries(accounts).map(([type, accts]) => (
+      {Object.entries(accounts || {}).map(([type, accts]) => (
         <div key={type}>
           <h2 className="text-xl font-semibold mb-3 text-primary">
             {ACCOUNT_TYPE_LABELS[type as keyof typeof ACCOUNT_TYPE_LABELS] || type}
@@ -32,7 +32,7 @@ export function COATable() {
                 </tr>
               </thead>
               <tbody className="bg-card">
-                {accts.map((account) => (
+                {(accts as any[]).map((account) => (
                   <tr key={account.id} className="hover:bg-accent transition-colors">
                     <td className="p-3 border-b border-border font-mono text-sm text-foreground">{account.code}</td>
                     <td className="p-3 border-b border-border text-foreground">{account.name}</td>

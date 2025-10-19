@@ -32,6 +32,13 @@ import { GeneralLedger } from "./components/GeneralLedger";
 import { CompanySettings } from "./components/CompanySettings";
 import { TaxReports } from "./components/TaxReports";
 import NotFound from "./pages/NotFound";
+import Login from "./components/Auth/Login";
+import Signup from "./components/Auth/Signup";
+import ProtectedRoute from "./components/Auth/ProtectedRoute";
+import InvoiceList from "./components/InvoiceList";
+import InvoiceDetail from "./components/InvoiceDetail";
+import ReceiptList from "./components/ReceiptList";
+import AccountManagement from "./components/AccountManagement";
 import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp, Lock, Camera, PieChart, Users, Building2, FolderKanban, List, FileCheck, Settings, FileSpreadsheet } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -273,34 +280,39 @@ const App = () => (
           {/* Main Content */}
           <div className="ml-64">
             <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/accounts" element={<COATable />} />
-              <Route path="/journals" element={<JournalList />} />
-              <Route path="/journals/:id" element={<JournalDetail />} />
-              <Route path="/journals/new" element={<JournalForm />} />
-              <Route path="/invoices/new" element={<InvoiceForm />} />
-              <Route path="/receipts/new" element={<ReceiptForm />} />
-              <Route path="/reports/ar-aging" element={<ARAgingReport />} />
-              <Route path="/ai/classify" element={<AIClassifier />} />
-              <Route path="/ai/inbox" element={<AIInbox />} />
-              <Route path="/bills" element={<BillList />} />
-              <Route path="/bills/new" element={<BillForm />} />
-              <Route path="/payments/new" element={<PaymentForm />} />
-              <Route path="/reports/ap-aging" element={<APAgingReport />} />
-              <Route path="/period-close" element={<PeriodClose />} />
-              <Route path="/snapshots" element={<SnapshotViewer />} />
-              <Route path="/reports/profit-loss" element={<ProfitLossReport />} />
-              <Route path="/reports/balance-sheet" element={<BalanceSheetReport />} />
-              <Route path="/reports/trial-balance" element={<TrialBalanceReport />} />
-              <Route path="/clients" element={<ClientManagement />} />
-              <Route path="/vendors" element={<VendorManagement />} />
-              <Route path="/projects" element={<ProjectManagement />} />
-              <Route path="/reports/revenue-by-client" element={<RevenueByClientReport />} />
-              <Route path="/reports/expenses-by-vendor" element={<ExpensesByVendorReport />} />
-              <Route path="/reports/project-profitability" element={<ProjectProfitabilityReport />} />
-              <Route path="/reports/general-ledger" element={<GeneralLedger />} />
-              <Route path="/reports/tax" element={<TaxReports />} />
-              <Route path="/settings" element={<CompanySettings />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/accounts" element={<ProtectedRoute><AccountManagement /></ProtectedRoute>} />
+              <Route path="/journals" element={<ProtectedRoute><JournalList /></ProtectedRoute>} />
+              <Route path="/journals/:id" element={<ProtectedRoute><JournalDetail /></ProtectedRoute>} />
+              <Route path="/journals/new" element={<ProtectedRoute><JournalForm /></ProtectedRoute>} />
+              <Route path="/invoices" element={<ProtectedRoute><InvoiceList /></ProtectedRoute>} />
+              <Route path="/invoices/:id" element={<ProtectedRoute><InvoiceDetail /></ProtectedRoute>} />
+              <Route path="/invoices/new" element={<ProtectedRoute><InvoiceForm /></ProtectedRoute>} />
+              <Route path="/receipts" element={<ProtectedRoute><ReceiptList /></ProtectedRoute>} />
+              <Route path="/receipts/new" element={<ProtectedRoute><ReceiptForm /></ProtectedRoute>} />
+              <Route path="/reports/ar-aging" element={<ProtectedRoute><ARAgingReport /></ProtectedRoute>} />
+              <Route path="/ai/classify" element={<ProtectedRoute><AIClassifier /></ProtectedRoute>} />
+              <Route path="/ai/inbox" element={<ProtectedRoute><AIInbox /></ProtectedRoute>} />
+              <Route path="/bills" element={<ProtectedRoute><BillList /></ProtectedRoute>} />
+              <Route path="/bills/new" element={<ProtectedRoute><BillForm /></ProtectedRoute>} />
+              <Route path="/payments/new" element={<ProtectedRoute><PaymentForm /></ProtectedRoute>} />
+              <Route path="/reports/ap-aging" element={<ProtectedRoute><APAgingReport /></ProtectedRoute>} />
+              <Route path="/period-close" element={<ProtectedRoute><PeriodClose /></ProtectedRoute>} />
+              <Route path="/snapshots" element={<ProtectedRoute><SnapshotViewer /></ProtectedRoute>} />
+              <Route path="/reports/profit-loss" element={<ProtectedRoute><ProfitLossReport /></ProtectedRoute>} />
+              <Route path="/reports/balance-sheet" element={<ProtectedRoute><BalanceSheetReport /></ProtectedRoute>} />
+              <Route path="/reports/trial-balance" element={<ProtectedRoute><TrialBalanceReport /></ProtectedRoute>} />
+              <Route path="/clients" element={<ProtectedRoute><ClientManagement /></ProtectedRoute>} />
+              <Route path="/vendors" element={<ProtectedRoute><VendorManagement /></ProtectedRoute>} />
+              <Route path="/projects" element={<ProtectedRoute><ProjectManagement /></ProtectedRoute>} />
+              <Route path="/reports/revenue-by-client" element={<ProtectedRoute><RevenueByClientReport /></ProtectedRoute>} />
+              <Route path="/reports/expenses-by-vendor" element={<ProtectedRoute><ExpensesByVendorReport /></ProtectedRoute>} />
+              <Route path="/reports/project-profitability" element={<ProtectedRoute><ProjectProfitabilityReport /></ProtectedRoute>} />
+              <Route path="/reports/general-ledger" element={<ProtectedRoute><GeneralLedger /></ProtectedRoute>} />
+              <Route path="/reports/tax" element={<ProtectedRoute><TaxReports /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><CompanySettings /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

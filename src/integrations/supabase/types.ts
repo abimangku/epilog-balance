@@ -404,6 +404,47 @@ export type Database = {
         }
         Relationships: []
       }
+      journal_attachment: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          journal_id: string
+          mime_type: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          file_path: string
+          file_size: number
+          id?: string
+          journal_id: string
+          mime_type?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          journal_id?: string
+          mime_type?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_attachment_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journal"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       journal_line: {
         Row: {
           account_code: string
@@ -682,6 +723,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       vendor: {
         Row: {
           address: string | null
@@ -950,6 +1012,13 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_period_closed: {
         Args: { p_period: string }
         Returns: boolean
@@ -970,6 +1039,7 @@ export type Database = {
         | "OTHER_INCOME"
         | "OTHER_EXPENSE"
         | "TAX_EXPENSE"
+      app_role: "admin" | "user"
       bill_category: "COGS" | "OPEX"
       bill_status: "DRAFT" | "APPROVED" | "PARTIAL" | "PAID" | "CANCELLED"
       invoice_status:
@@ -1121,6 +1191,7 @@ export const Constants = {
         "OTHER_EXPENSE",
         "TAX_EXPENSE",
       ],
+      app_role: ["admin", "user"],
       bill_category: ["COGS", "OPEX"],
       bill_status: ["DRAFT", "APPROVED", "PARTIAL", "PAID", "CANCELLED"],
       invoice_status: [
