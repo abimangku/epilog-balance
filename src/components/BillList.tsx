@@ -108,7 +108,7 @@ export function BillList() {
         >
           <option value="all">All Vendors</option>
           {uniqueVendors.map(vendor => (
-            <option key={vendor as string} value={vendor as string}>{vendor}</option>
+            <option key={vendor as string} value={vendor as string}>{vendor as string}</option>
           ))}
         </select>
         <select
