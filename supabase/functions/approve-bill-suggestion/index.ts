@@ -92,18 +92,18 @@ serve(async (req) => {
     // Call create-bill edge function
     const { data: billData, error: billError } = await supabase.functions.invoke('create-bill', {
       body: {
-        vendorId: vendor.id,
         date: suggestionData.date,
-        dueDate: suggestionData.due_date || suggestionData.date,
-        category: suggestionData.category,
-        projectId,
+        vendorId: vendor.id,
+        projectId: projectId,
+        vendorInvoiceNumber: suggestionData.vendor_invoice_number,
         fakturPajakNumber: suggestionData.faktur_pajak_number,
+        category: suggestionData.category,
         lines: suggestionData.lines.map((line: any) => ({
           description: line.description,
-          expenseAccountCode: line.expense_account_code,
           quantity: line.quantity || 1,
           unitPrice: line.unit_price,
-          amount: line.amount
+          expenseAccountCode: line.expense_account_code,
+          projectCode: line.project_code
         }))
       },
       headers: {
@@ -111,7 +111,16 @@ serve(async (req) => {
       }
     });
 
-    if (billError) throw billError;
+    if (billError) {
+      console.error('create-bill failed:', billError);
+      console.error('Bill payload:', JSON.stringify({
+        date: suggestionData.date,
+        vendorId: vendor.id,
+        projectId,
+        lines: suggestionData.lines
+      }, null, 2));
+      throw billError;
+    }
 
     // Update message status
     await supabase

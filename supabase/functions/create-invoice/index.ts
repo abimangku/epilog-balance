@@ -9,8 +9,8 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const invoiceLineSchema = z.object({
   description: z.string().min(1).max(500),
   quantity: z.number().positive().max(1000000),
-  unitPrice: z.number().int().min(0).max(999999999999),
-  amount: z.number().int().min(0).max(999999999999),
+  unitPrice: z.number().min(0).max(999999999999),
+  amount: z.number().min(0).max(999999999999),
   revenueAccountCode: z.string().regex(/^\d-\d{5}$/),
 })
 

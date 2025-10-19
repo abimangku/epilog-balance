@@ -323,6 +323,14 @@ export function AIAssistant() {
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle validation errors
+        if (data.error?.includes('Invalid input') || data.error?.includes('validation')) {
+          toast.error("Validation Error", {
+            description: "Please check the amounts and data in the suggestion.",
+          });
+          return;
+        }
+        
         // Handle missing entity errors with recovery
         if (data.error === 'missing_vendor' || data.error === 'missing_client') {
           const entityType = data.error === 'missing_vendor' ? 'vendor' : 'client';

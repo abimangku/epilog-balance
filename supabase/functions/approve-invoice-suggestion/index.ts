@@ -96,13 +96,13 @@ serve(async (req) => {
         date: suggestionData.date,
         dueDate: suggestionData.due_date || suggestionData.date,
         projectId,
-        fakturPajakNumber: suggestionData.faktur_pajak_number,
+        description: suggestionData.description,
         lines: suggestionData.lines.map((line: any) => ({
           description: line.description,
-          revenueAccountCode: line.revenue_account_code,
           quantity: line.quantity || 1,
           unitPrice: line.unit_price,
           amount: line.amount,
+          revenueAccountCode: line.revenue_account_code,
           projectId: line.project_id || projectId
         }))
       },
@@ -111,7 +111,17 @@ serve(async (req) => {
       }
     });
 
-    if (invoiceError) throw invoiceError;
+    if (invoiceError) {
+      console.error('create-invoice failed:', invoiceError);
+      console.error('Invoice payload:', JSON.stringify({
+        clientId: client.id,
+        date: suggestionData.date,
+        dueDate: suggestionData.due_date || suggestionData.date,
+        projectId,
+        lines: suggestionData.lines
+      }, null, 2));
+      throw invoiceError;
+    }
 
     // Update message status
     await supabase
