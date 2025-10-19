@@ -125,6 +125,66 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_suggestion_log: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          approved_data: Json | null
+          conversation_id: string | null
+          created_at: string | null
+          created_entity_id: string | null
+          created_entity_type: string | null
+          id: string
+          message_id: string | null
+          status: string
+          suggested_data: Json
+          suggestion_type: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_data?: Json | null
+          conversation_id?: string | null
+          created_at?: string | null
+          created_entity_id?: string | null
+          created_entity_type?: string | null
+          id?: string
+          message_id?: string | null
+          status?: string
+          suggested_data: Json
+          suggestion_type: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_data?: Json | null
+          conversation_id?: string | null
+          created_at?: string | null
+          created_entity_id?: string | null
+          created_entity_type?: string | null
+          id?: string
+          message_id?: string | null
+          status?: string
+          suggested_data?: Json
+          suggestion_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_suggestion_log_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_suggestion_log_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_message"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_account: {
         Row: {
           account_code: string

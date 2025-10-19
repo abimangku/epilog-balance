@@ -7,6 +7,7 @@ import { Paperclip, Send, Plus, MessageSquare, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import ReactMarkdown from 'react-markdown';
+import { SuggestionCard } from './SuggestionCard';
 
 export function AIAssistant() {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
@@ -93,6 +94,8 @@ export function AIAssistant() {
       let textBuffer = '';
       let streamDone = false;
       let fullContent = '';
+      let suggestionData: any = null;
+      let suggestionType: string | null = null;
 
       while (!streamDone) {
         const { done, value } = await reader.read();
@@ -118,9 +121,34 @@ export function AIAssistant() {
           try {
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content;
+            const toolCalls = parsed.choices?.[0]?.delta?.tool_calls;
+            
             if (content) {
               fullContent += content;
               setStreamingContent(fullContent);
+            }
+
+            // Parse tool calls for suggestions
+            if (toolCalls && toolCalls.length > 0) {
+              const toolCall = toolCalls[0];
+              if (toolCall.function?.name && toolCall.function?.arguments) {
+                const funcName = toolCall.function.name;
+                const args = JSON.parse(toolCall.function.arguments);
+                
+                if (funcName === 'suggest_bill') {
+                  suggestionType = 'bill';
+                  suggestionData = { ...args, due_date: args.date };
+                } else if (funcName === 'suggest_invoice') {
+                  suggestionType = 'invoice';
+                  suggestionData = { ...args, due_date: args.date };
+                } else if (funcName === 'suggest_journal') {
+                  suggestionType = 'journal';
+                  suggestionData = args;
+                } else if (funcName === 'suggest_payment') {
+                  suggestionType = 'payment';
+                  suggestionData = args;
+                }
+              }
             }
           } catch {
             textBuffer = line + '\n' + textBuffer;
@@ -129,12 +157,20 @@ export function AIAssistant() {
         }
       }
 
-      // Save assistant message to database
-      if (fullContent) {
+      // Save assistant message to database with suggestion metadata
+      if (fullContent || suggestionData) {
+        const metadata: any = {};
+        if (suggestionData && suggestionType) {
+          metadata.suggestion_type = suggestionType;
+          metadata.suggested_data = suggestionData;
+          metadata.status = 'pending';
+        }
+
         await supabase.from('conversation_message').insert({
           conversation_id: selectedConversation,
           role: 'assistant',
-          content: fullContent
+          content: fullContent || 'Suggestion created',
+          metadata: Object.keys(metadata).length > 0 ? metadata : null
         });
       }
 
@@ -180,6 +216,76 @@ export function AIAssistant() {
       setAttachedFiles(Array.from(e.target.files));
       toast({ title: 'Files attached', description: `${e.target.files.length} file(s) ready to upload` });
     }
+  };
+
+  const handleApproveSuggestion = async (messageId: string) => {
+    const message = messages?.find(m => m.id === messageId);
+    if (!message?.metadata?.suggested_data) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({ title: 'Error', description: 'Authentication required', variant: 'destructive' });
+        return;
+      }
+
+      const suggestionType = message.metadata.suggestion_type;
+      const functionName = `approve-${suggestionType}-suggestion`;
+
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: {
+          messageId,
+          conversationId: selectedConversation,
+          suggestionData: message.metadata.suggested_data
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: `${suggestionType.charAt(0).toUpperCase() + suggestionType.slice(1)} created successfully`,
+      });
+
+      // Refresh messages
+      sendMessage.mutate({ conversationId: selectedConversation, message: '', attachments: [] });
+    } catch (error) {
+      console.error('Approval error:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to approve suggestion',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleRejectSuggestion = async (messageId: string) => {
+    try {
+      await supabase
+        .from('conversation_message')
+        .update({ 
+          metadata: { 
+            ...messages?.find(m => m.id === messageId)?.metadata,
+            status: 'rejected' 
+          }
+        })
+        .eq('id', messageId);
+
+      toast({ title: 'Suggestion rejected' });
+      sendMessage.mutate({ conversationId: selectedConversation, message: '', attachments: [] });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to reject suggestion', variant: 'destructive' });
+    }
+  };
+
+  const handleCommentOnSuggestion = async (messageId: string, comment: string) => {
+    const message = messages?.find(m => m.id === messageId);
+    if (!message) return;
+
+    // Send the comment as a new user message with context
+    const contextMessage = `[Regarding previous suggestion] ${comment}`;
+    setInputMessage(contextMessage);
+    await handleSendMessage();
   };
 
   if (!selectedConversation) {
@@ -262,21 +368,42 @@ export function AIAssistant() {
               key={msg.id}
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div
-                className={`max-w-[80%] rounded-lg p-4 ${
-                  msg.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted'
-                }`}
-              >
-                {msg.role === 'assistant' ? (
-                  <div className="prose prose-sm max-w-none">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                  </div>
-                ) : (
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                )}
-              </div>
+              {msg.role === 'assistant' && msg.metadata?.suggestion_type ? (
+                <div className="max-w-[80%] w-full">
+                  {msg.content && (
+                    <div className="mb-2 rounded-lg p-4 bg-muted">
+                      <div className="prose prose-sm max-w-none">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
+                  <SuggestionCard
+                    type={msg.metadata.suggestion_type}
+                    data={msg.metadata.suggested_data}
+                    messageId={msg.id}
+                    status={msg.metadata.status}
+                    onApprove={() => handleApproveSuggestion(msg.id)}
+                    onReject={() => handleRejectSuggestion(msg.id)}
+                    onComment={(comment) => handleCommentOnSuggestion(msg.id, comment)}
+                  />
+                </div>
+              ) : (
+                <div
+                  className={`max-w-[80%] rounded-lg p-4 ${
+                    msg.role === 'user'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted'
+                  }`}
+                >
+                  {msg.role === 'assistant' ? (
+                    <div className="prose prose-sm max-w-none">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                  )}
+                </div>
+              )}
             </div>
           ))}
           

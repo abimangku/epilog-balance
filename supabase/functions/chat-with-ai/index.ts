@@ -223,6 +223,130 @@ serve(async (req) => {
         ],
         stream: true,
         temperature: 0.7,
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'suggest_bill',
+              description: 'Suggest creating a vendor bill with detailed line items and tax calculations',
+              parameters: {
+                type: 'object',
+                properties: {
+                  vendor_name: { type: 'string' },
+                  vendor_code: { type: 'string' },
+                  date: { type: 'string', description: 'YYYY-MM-DD format' },
+                  category: { type: 'string', enum: ['COGS', 'OPEX'] },
+                  subtotal: { type: 'number' },
+                  vat_amount: { type: 'number' },
+                  total: { type: 'number' },
+                  project_name: { type: 'string' },
+                  faktur_pajak_number: { type: 'string' },
+                  lines: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        description: { type: 'string' },
+                        expense_account_code: { type: 'string' },
+                        expense_account_name: { type: 'string' },
+                        quantity: { type: 'number' },
+                        unit_price: { type: 'number' },
+                        amount: { type: 'number' }
+                      }
+                    }
+                  }
+                },
+                required: ['vendor_name', 'date', 'category', 'subtotal', 'vat_amount', 'total', 'lines']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'suggest_invoice',
+              description: 'Suggest creating a sales invoice with line items',
+              parameters: {
+                type: 'object',
+                properties: {
+                  client_name: { type: 'string' },
+                  client_code: { type: 'string' },
+                  date: { type: 'string', description: 'YYYY-MM-DD format' },
+                  subtotal: { type: 'number' },
+                  vat_amount: { type: 'number' },
+                  total: { type: 'number' },
+                  project_name: { type: 'string' },
+                  faktur_pajak_number: { type: 'string' },
+                  lines: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        description: { type: 'string' },
+                        revenue_account_code: { type: 'string' },
+                        revenue_account_name: { type: 'string' },
+                        quantity: { type: 'number' },
+                        unit_price: { type: 'number' },
+                        amount: { type: 'number' }
+                      }
+                    }
+                  }
+                },
+                required: ['client_name', 'date', 'subtotal', 'vat_amount', 'total', 'lines']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'suggest_journal',
+              description: 'Suggest a manual journal entry with debit and credit lines',
+              parameters: {
+                type: 'object',
+                properties: {
+                  date: { type: 'string', description: 'YYYY-MM-DD format' },
+                  description: { type: 'string' },
+                  period: { type: 'string', description: 'YYYY-MM format' },
+                  lines: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        account_code: { type: 'string' },
+                        account_name: { type: 'string' },
+                        description: { type: 'string' },
+                        debit: { type: 'number' },
+                        credit: { type: 'number' },
+                        project_code: { type: 'string' }
+                      }
+                    }
+                  }
+                },
+                required: ['date', 'description', 'period', 'lines']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'suggest_payment',
+              description: 'Suggest a vendor payment with tax withholding',
+              parameters: {
+                type: 'object',
+                properties: {
+                  bill_number: { type: 'string' },
+                  vendor_name: { type: 'string' },
+                  date: { type: 'string', description: 'YYYY-MM-DD format' },
+                  amount: { type: 'number' },
+                  pph23_withheld: { type: 'number' },
+                  bank_account_code: { type: 'string' },
+                  bank_account_name: { type: 'string' },
+                  description: { type: 'string' }
+                },
+                required: ['bill_number', 'vendor_name', 'date', 'amount', 'pph23_withheld', 'bank_account_code', 'bank_account_name']
+              }
+            }
+          }
+        ]
       }),
     });
 

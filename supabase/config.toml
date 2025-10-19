@@ -8,3 +8,15 @@ verify_jwt = false
 
 [functions.audit-compliance]
 verify_jwt = true
+
+[functions.approve-bill-suggestion]
+verify_jwt = true
+
+[functions.approve-invoice-suggestion]
+verify_jwt = true
+
+[functions.approve-journal-suggestion]
+verify_jwt = true
+
+[functions.approve-payment-suggestion]
+verify_jwt = true
