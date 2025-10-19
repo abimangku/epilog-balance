@@ -13,7 +13,7 @@ export function JournalList() {
   const [aiFilter, setAiFilter] = useState('')
   const { toast } = useToast()
 
-  const { data: journals } = useJournals({ period, searchTerm, status, aiFilter })
+  const { data: journals, isLoading } = useJournals({ period, searchTerm, status, aiFilter })
   const voidJournal = useVoidJournal()
   const deleteJournal = useDeleteJournal()
 
@@ -155,7 +155,14 @@ export function JournalList() {
             </tr>
           </thead>
           <tbody>
-            {journals?.map((journal: any) => (
+            {isLoading ? (
+              <tr>
+                <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                  Loading journals...
+                </td>
+              </tr>
+            ) : journals && journals.length > 0 ? (
+              journals.map((journal: any) => (
               <tr 
                 key={journal.id} 
                 className={`hover:bg-muted/50 ${journal.voided_at ? 'bg-destructive/10 opacity-60' : ''}`}
@@ -227,7 +234,14 @@ export function JournalList() {
                   )}
                 </td>
               </tr>
-            ))}
+              ))
+            ) : (
+              <tr>
+                <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                  No journal entries found for the selected filters.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
