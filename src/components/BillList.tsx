@@ -1,8 +1,33 @@
 import { useBills } from '@/hooks/useBills'
 import { Link } from 'react-router-dom'
+import { exportToExcel } from '@/lib/exportToExcel'
+import { Download } from 'lucide-react'
 
 export function BillList() {
   const { data: bills, isLoading } = useBills()
+
+  const handleExport = () => {
+    const exportData = bills?.map(bill => {
+      const totalPaid = bill.payments?.reduce(
+        (sum: number, p: any) => sum + Number(p.amount) + Number(p.pph23_withheld),
+        0
+      ) || 0
+      const balance = Number(bill.total) - totalPaid
+
+      return {
+        'Bill #': bill.number,
+        'Date': new Date(bill.date).toLocaleDateString(),
+        'Vendor': bill.vendor?.name,
+        'Category': bill.category,
+        'Project': bill.project?.code || '-',
+        'Total': bill.total,
+        'Status': bill.status,
+        'Balance': balance,
+      }
+    }) || []
+    
+    exportToExcel(exportData, `bills-${new Date().toISOString().split('T')[0]}`, 'Bills')
+  }
 
   if (isLoading) {
     return <div className="p-6">Loading bills...</div>
@@ -42,12 +67,21 @@ export function BillList() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Vendor Bills</h1>
-        <Link
-          to="/bills/new"
-          className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
-        >
-          + New Bill
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={handleExport}
+            className="px-4 py-2 bg-muted text-foreground rounded hover:bg-muted/80 flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Export to Excel
+          </button>
+          <Link
+            to="/bills/new"
+            className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+          >
+            + New Bill
+          </Link>
+        </div>
       </div>
 
       <div className="bg-card shadow rounded-lg overflow-hidden">
@@ -74,7 +108,11 @@ export function BillList() {
 
               return (
                 <tr key={bill.id} className="hover:bg-muted/50">
-                  <td className="p-3 border font-mono text-sm">{bill.number}</td>
+                  <td className="p-3 border font-mono text-sm">
+                    <Link to={`/bills/${bill.id}`} className="text-primary hover:underline">
+                      {bill.number}
+                    </Link>
+                  </td>
                   <td className="p-3 border">
                     {new Date(bill.date).toLocaleDateString()}
                   </td>

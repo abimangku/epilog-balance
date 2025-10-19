@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useCreatePayment } from '@/hooks/usePayments'
 import { useBill } from '@/hooks/useBills'
+import { useBankAccounts } from '@/hooks/useBankAccounts'
 import { useToast } from '@/hooks/use-toast'
 
 export function PaymentForm() {
@@ -10,12 +11,15 @@ export function PaymentForm() {
   const billId = searchParams.get('bill') || ''
 
   const { data: bill } = useBill(billId)
+  const { data: bankAccounts } = useBankAccounts()
   const createPayment = useCreatePayment()
   const { toast } = useToast()
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [amount, setAmount] = useState('')
   const [bankAccountCode, setBankAccountCode] = useState('1-10200')
+
+  const activeBankAccounts = bankAccounts?.filter(b => b.is_active) || []
 
   useEffect(() => {
     if (bill) {
@@ -145,9 +149,11 @@ export function PaymentForm() {
             className="w-full border rounded px-3 py-2"
             required
           >
-            <option value="1-10200">Bank BSI</option>
-            <option value="1-10300">Bank BRI</option>
-            <option value="1-10400">Giro</option>
+            {activeBankAccounts.map((bank) => (
+              <option key={bank.id} value={bank.account_code}>
+                {bank.bank_name} - {bank.account_number}
+              </option>
+            ))}
           </select>
         </div>
 

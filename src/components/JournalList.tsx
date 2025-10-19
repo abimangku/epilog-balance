@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { useJournals, useVoidJournal } from '@/hooks/useCriticalFeatures'
 import { Link } from 'react-router-dom'
 import { useToast } from '@/hooks/use-toast'
+import { exportToExcel } from '@/lib/exportToExcel'
+import { Download } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export function JournalList() {
   const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7))
@@ -31,16 +34,37 @@ export function JournalList() {
     }
   }
 
+  const handleExport = () => {
+    const exportData = journals?.map(j => ({
+      'Journal #': j.number,
+      'Date': new Date(j.date).toLocaleDateString(),
+      'Period': j.period,
+      'Description': j.description,
+      'Status': j.status,
+      'Total Debit': j.total_debit,
+      'Total Credit': j.total_credit,
+      'Lines': j.line_count,
+    })) || []
+    
+    exportToExcel(exportData, `journals-${new Date().toISOString().split('T')[0]}`, 'Journals')
+  }
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-foreground">Journal Entries</h1>
-        <Link
-          to="/journals/new"
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-        >
-          + New Journal Entry
-        </Link>
+        <div className="flex gap-2">
+          <Button onClick={handleExport} variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Export to Excel
+          </Button>
+          <Link
+            to="/journals/new"
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+          >
+            + New Journal Entry
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}

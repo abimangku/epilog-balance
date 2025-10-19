@@ -723,6 +723,98 @@ export type Database = {
         }
         Relationships: []
       }
+      tx_ai_suggestion: {
+        Row: {
+          confidence: number
+          created_at: string | null
+          id: string
+          reasoning: string | null
+          status: string
+          suggested_accounts: Json
+          suggested_client: string | null
+          suggested_project: string | null
+          suggested_type: string
+          suggested_vendor: string | null
+          tx_input_id: string
+        }
+        Insert: {
+          confidence: number
+          created_at?: string | null
+          id?: string
+          reasoning?: string | null
+          status?: string
+          suggested_accounts: Json
+          suggested_client?: string | null
+          suggested_project?: string | null
+          suggested_type: string
+          suggested_vendor?: string | null
+          tx_input_id: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string | null
+          id?: string
+          reasoning?: string | null
+          status?: string
+          suggested_accounts?: Json
+          suggested_client?: string | null
+          suggested_project?: string | null
+          suggested_type?: string
+          suggested_vendor?: string | null
+          tx_input_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tx_ai_suggestion_tx_input_id_fkey"
+            columns: ["tx_input_id"]
+            isOneToOne: false
+            referencedRelation: "tx_input"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tx_input: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          date: string
+          description: string
+          id: string
+          project_code: string | null
+          status: string
+          updated_at: string | null
+          vendor: string | null
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          date: string
+          description: string
+          id?: string
+          project_code?: string | null
+          status?: string
+          updated_at?: string | null
+          vendor?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          date?: string
+          description?: string
+          id?: string
+          project_code?: string | null
+          status?: string
+          updated_at?: string | null
+          vendor?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -971,6 +1063,18 @@ export type Database = {
           total: number | null
           total_paid: number | null
           vendor_name: string | null
+        }
+        Relationships: []
+      }
+      dashboard_metrics: {
+        Row: {
+          ap_total: number | null
+          ar_total: number | null
+          cash_balance: number | null
+          mtd_expenses: number | null
+          mtd_revenue: number | null
+          overdue_bills: number | null
+          overdue_invoices: number | null
         }
         Relationships: []
       }

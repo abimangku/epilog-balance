@@ -13,6 +13,8 @@ import { ReceiptForm } from "./components/ReceiptForm";
 import { ARAgingReport } from "./components/ARAgingReport";
 import { BillForm } from "./components/BillForm";
 import { BillList } from "./components/BillList";
+import { BillDetail } from "./components/BillDetail";
+import { BankAccountManagement } from "./components/BankAccountManagement";
 import { PaymentForm } from "./components/PaymentForm";
 import { APAgingReport } from "./components/APAgingReport";
 import { PeriodClose } from "./components/PeriodClose";
@@ -39,7 +41,8 @@ import InvoiceList from "./components/InvoiceList";
 import InvoiceDetail from "./components/InvoiceDetail";
 import ReceiptList from "./components/ReceiptList";
 import AccountManagement from "./components/AccountManagement";
-import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp, Lock, Camera, PieChart, Users, Building2, FolderKanban, List, FileCheck, Settings, FileSpreadsheet } from "lucide-react";
+import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp, Lock, Camera, PieChart, Users, Building2, FolderKanban, List, FileCheck, Settings, FileSpreadsheet, Landmark, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const queryClient = new QueryClient();
 
@@ -269,13 +272,31 @@ const App = () => (
               
               <div className="pt-4 mt-4 border-t border-sidebar-border">
                 <div className="text-xs text-sidebar-foreground/60 px-4 mb-2 font-semibold">SETTINGS</div>
-                <Link 
-                  to="/settings" 
-                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-                >
-                  <Settings className="h-4 w-4" />
-                  Company Settings
-                </Link>
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center justify-between gap-3 px-4 py-2 w-full rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors">
+                    <div className="flex items-center gap-3">
+                      <Settings className="h-4 w-4" />
+                      Settings
+                    </div>
+                    <ChevronDown className="h-4 w-4" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-1">
+                    <Link 
+                      to="/settings" 
+                      className="flex items-center gap-3 px-4 py-2 pl-12 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Company Settings
+                    </Link>
+                    <Link 
+                      to="/settings/banks" 
+                      className="flex items-center gap-3 px-4 py-2 pl-12 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                    >
+                      <Landmark className="h-4 w-4" />
+                      Bank Accounts
+                    </Link>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             </nav>
           </div>
@@ -299,6 +320,7 @@ const App = () => (
               <Route path="/ai/classify" element={<ProtectedRoute><AIClassifier /></ProtectedRoute>} />
               <Route path="/ai/inbox" element={<ProtectedRoute><AIInbox /></ProtectedRoute>} />
               <Route path="/bills" element={<ProtectedRoute><BillList /></ProtectedRoute>} />
+              <Route path="/bills/:id" element={<ProtectedRoute><BillDetail /></ProtectedRoute>} />
               <Route path="/bills/new" element={<ProtectedRoute><BillForm /></ProtectedRoute>} />
               <Route path="/payments/new" element={<ProtectedRoute><PaymentForm /></ProtectedRoute>} />
               <Route path="/reports/ap-aging" element={<ProtectedRoute><APAgingReport /></ProtectedRoute>} />
@@ -316,6 +338,7 @@ const App = () => (
               <Route path="/reports/general-ledger" element={<ProtectedRoute><GeneralLedger /></ProtectedRoute>} />
               <Route path="/reports/tax" element={<ProtectedRoute><TaxReports /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><CompanySettings /></ProtectedRoute>} />
+              <Route path="/settings/banks" element={<ProtectedRoute><BankAccountManagement /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

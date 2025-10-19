@@ -1,23 +1,21 @@
 import { useState } from 'react'
 import { useOutstandingInvoices } from '@/hooks/useInvoices'
 import { useCreateReceipt } from '@/hooks/useReceipts'
-import { useAccounts } from '@/hooks/useAccounts'
+import { useBankAccounts } from '@/hooks/useBankAccounts'
 
 export function ReceiptForm() {
   const { data: outstandingInvoices, isLoading } = useOutstandingInvoices()
-  const { data: accounts } = useAccounts()
+  const { data: bankAccounts } = useBankAccounts()
   const createReceipt = useCreateReceipt()
 
   const [invoiceId, setInvoiceId] = useState('')
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [amount, setAmount] = useState('')
   const [pph23Withheld, setPph23Withheld] = useState('')
-  const [bankAccountCode, setBankAccountCode] = useState('1-10200') // BSI default
+  const [bankAccountCode, setBankAccountCode] = useState('1-10200')
   const [description, setDescription] = useState('')
 
-  const bankAccounts = accounts?.filter(a => 
-    a.code.startsWith('1-10') && !['1-10100'].includes(a.code)
-  ) || []
+  const activeBankAccounts = bankAccounts?.filter(b => b.is_active) || []
 
   const selectedInvoice = outstandingInvoices?.find(inv => inv.id === invoiceId)
 
@@ -170,9 +168,9 @@ export function ReceiptForm() {
             className="w-full border rounded px-3 py-2"
             required
           >
-            {bankAccounts.map((account) => (
-              <option key={account.id} value={account.code}>
-                {account.code} - {account.name}
+            {activeBankAccounts.map((bank) => (
+              <option key={bank.id} value={bank.account_code}>
+                {bank.bank_name} - {bank.account_number}
               </option>
             ))}
           </select>

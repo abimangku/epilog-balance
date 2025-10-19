@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Plus, Search } from 'lucide-react'
+import { Loader2, Plus, Search, Download } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
+import { exportToExcel } from '@/lib/exportToExcel'
 
 export default function InvoiceList() {
   const { data: invoices, isLoading } = useInvoices()
@@ -32,6 +33,19 @@ export default function InvoiceList() {
     }
   }
 
+  const handleExport = () => {
+    const exportData = filtered?.map(inv => ({
+      'Invoice #': inv.number,
+      'Client': inv.client?.name,
+      'Date': new Date(inv.date).toLocaleDateString(),
+      'Due Date': new Date(inv.due_date).toLocaleDateString(),
+      'Amount': inv.total,
+      'Status': inv.status,
+    })) || []
+    
+    exportToExcel(exportData, `invoices-${new Date().toISOString().split('T')[0]}`, 'Invoices')
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -44,12 +58,18 @@ export default function InvoiceList() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Sales Invoices</h1>
-        <Button asChild>
-          <Link to="/invoice/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New Invoice
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleExport} variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Export to Excel
+          </Button>
+          <Button asChild>
+            <Link to="/invoice/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Invoice
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Card>

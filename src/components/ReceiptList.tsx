@@ -5,8 +5,9 @@ import { Link } from 'react-router-dom'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Loader2, Plus, Search } from 'lucide-react'
+import { Loader2, Plus, Search, Download } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
+import { exportToExcel } from '@/lib/exportToExcel'
 
 export default function ReceiptList() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -34,6 +35,18 @@ export default function ReceiptList() {
     r.invoice?.number.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  const handleExport = () => {
+    const exportData = filtered?.map(r => ({
+      'Receipt #': r.number,
+      'Date': new Date(r.date).toLocaleDateString(),
+      'Client': r.client?.name,
+      'Invoice #': r.invoice?.number,
+      'Amount': r.amount,
+    })) || []
+    
+    exportToExcel(exportData, `receipts-${new Date().toISOString().split('T')[0]}`, 'Receipts')
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -46,12 +59,18 @@ export default function ReceiptList() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Cash Receipts</h1>
-        <Button asChild>
-          <Link to="/receipt/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New Receipt
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleExport} variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Export to Excel
+          </Button>
+          <Button asChild>
+            <Link to="/receipt/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Receipt
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Card>
