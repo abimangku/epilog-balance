@@ -1,8 +1,20 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+// Validation schema
+const createReceiptSchema = z.object({
+  invoiceId: z.string().uuid(),
+  clientId: z.string().uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  amount: z.number().int().positive().max(999999999999),
+  bankAccountCode: z.string().regex(/^\d-\d{5}$/),
+  description: z.string().max(1000).optional(),
+  pph23Withheld: z.number().int().min(0).max(999999999999).optional(),
+})
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,14 +48,18 @@ serve(async (req) => {
       )
     }
 
-    const { invoiceId, date, amount, pph23Withheld, bankAccountCode, description } = await req.json()
-
-    if (!invoiceId || !date || !amount || !bankAccountCode) {
+    // Parse and validate input
+    const body = await req.json()
+    const validationResult = createReceiptSchema.safeParse(body)
+    
+    if (!validationResult.success) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ error: 'Invalid input', details: validationResult.error.issues }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    const { invoiceId, clientId, date, amount, pph23Withheld, bankAccountCode, description } = validationResult.data
 
     const supabase = supabaseClient
 

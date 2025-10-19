@@ -1,26 +1,28 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-interface BillLine {
-  description: string
-  quantity: number
-  unitPrice: number
-  expenseAccountCode: string
-  projectCode?: string
-}
+// Validation schemas
+const billLineSchema = z.object({
+  description: z.string().min(1).max(500),
+  quantity: z.number().positive().max(1000000),
+  unitPrice: z.number().int().min(0).max(999999999999),
+  expenseAccountCode: z.string().regex(/^\d-\d{5}$/),
+  projectCode: z.string().max(50).optional(),
+})
 
-interface CreateBillInput {
-  date: string
-  vendorId: string
-  projectId?: string
-  vendorInvoiceNumber?: string
-  fakturPajakNumber?: string
-  category: 'COGS' | 'OPEX'
-  lines: BillLine[]
-}
+const createBillSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  vendorId: z.string().uuid(),
+  projectId: z.string().uuid().optional(),
+  vendorInvoiceNumber: z.string().max(100).optional(),
+  fakturPajakNumber: z.string().max(100).optional(),
+  category: z.enum(['COGS', 'OPEX']),
+  lines: z.array(billLineSchema).min(1).max(100),
+})
 
 serve(async (req) => {
   try {
@@ -56,14 +58,18 @@ serve(async (req) => {
       )
     }
 
-    const input: CreateBillInput = await req.json()
-
-    if (!input.date || !input.vendorId || !input.lines || input.lines.length === 0) {
+    // Parse and validate input
+    const body = await req.json()
+    const validationResult = createBillSchema.safeParse(body)
+    
+    if (!validationResult.success) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ error: 'Invalid input', details: validationResult.error.issues }),
         { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       )
     }
+
+    const input = validationResult.data
 
     // Get vendor details
     const { data: vendor, error: vendorError } = await supabase

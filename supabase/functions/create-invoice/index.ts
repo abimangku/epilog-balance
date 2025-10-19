@@ -1,8 +1,27 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+// Validation schemas
+const invoiceLineSchema = z.object({
+  description: z.string().min(1).max(500),
+  quantity: z.number().positive().max(1000000),
+  unitPrice: z.number().int().min(0).max(999999999999),
+  amount: z.number().int().min(0).max(999999999999),
+  revenueAccountCode: z.string().regex(/^\d-\d{5}$/),
+})
+
+const createInvoiceSchema = z.object({
+  clientId: z.string().uuid(),
+  projectId: z.string().uuid().optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  description: z.string().max(1000).optional(),
+  lines: z.array(invoiceLineSchema).min(1).max(100),
+})
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,14 +55,18 @@ serve(async (req) => {
       )
     }
 
-    const { clientId, projectId, date, dueDate, description, lines } = await req.json()
-
-    if (!clientId || !date || !dueDate || !lines || lines.length === 0) {
+    // Parse and validate input
+    const body = await req.json()
+    const validationResult = createInvoiceSchema.safeParse(body)
+    
+    if (!validationResult.success) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ error: 'Invalid input', details: validationResult.error.issues }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    const { clientId, projectId, date, dueDate, description, lines } = validationResult.data
 
     const supabase = supabaseClient
 

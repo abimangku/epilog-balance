@@ -1,15 +1,17 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-interface CreatePaymentInput {
-  date: string
-  billId: string
-  amount: number
-  bankAccountCode: string
-}
+// Validation schema
+const createPaymentSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  billId: z.string().uuid(),
+  amount: z.number().int().positive().max(999999999999),
+  bankAccountCode: z.string().regex(/^\d-\d{5}$/),
+})
 
 serve(async (req) => {
   try {
@@ -44,14 +46,18 @@ serve(async (req) => {
       )
     }
 
-    const input: CreatePaymentInput = await req.json()
-
-    if (!input.date || !input.billId || !input.amount || !input.bankAccountCode) {
+    // Parse and validate input
+    const body = await req.json()
+    const validationResult = createPaymentSchema.safeParse(body)
+    
+    if (!validationResult.success) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ error: 'Invalid input', details: validationResult.error.issues }),
         { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       )
     }
+
+    const input = validationResult.data
 
     const supabase = supabaseClient
 
