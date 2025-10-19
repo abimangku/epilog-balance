@@ -51,12 +51,12 @@ const App = () => (
       <BrowserRouter>
         <div className="min-h-screen bg-background">
           {/* Sidebar */}
-          <div className="fixed left-0 top-0 h-full w-64 bg-sidebar border-r border-sidebar-border p-4">
-            <Link to="/" className="block mb-8">
+          <div className="fixed left-0 top-0 h-full w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
+            <Link to="/" className="block p-4 border-b border-sidebar-border flex-shrink-0">
               <h1 className="text-2xl font-bold text-sidebar-foreground">Vibe Accounting</h1>
               <p className="text-xs text-sidebar-foreground/60 mt-1">PSAK-Compliant</p>
             </Link>
-            <nav className="space-y-2">
+            <nav className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-thumb-sidebar-accent">
               <Link 
                 to="/" 
                 className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"

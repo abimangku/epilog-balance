@@ -34,7 +34,21 @@ serve(async (req) => {
       })
     }
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+    // Get auth token and validate user
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      )
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      global: { headers: { Authorization: authHeader } }
+    })
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token)
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: 'Invalid token' }),
@@ -50,8 +64,6 @@ serve(async (req) => {
         { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
       )
     }
-
-    const supabase = supabaseClient
 
     // Get vendor details
     const { data: vendor, error: vendorError } = await supabase
@@ -115,6 +127,7 @@ serve(async (req) => {
         description: input.lines.map(l => l.description).join('; '),
         category: input.category,
         status: 'APPROVED',
+        created_by: user.id,
       })
       .select()
       .single()
