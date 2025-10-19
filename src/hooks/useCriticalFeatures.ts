@@ -9,6 +9,7 @@ export function useJournals(filters?: {
   period?: string
   status?: string
   searchTerm?: string
+  aiFilter?: string
 }) {
   return useQuery({
     queryKey: ['journals', filters],
@@ -25,6 +26,7 @@ export function useJournals(filters?: {
           voided_at:voided_at,
           reversed_by,
           is_reversal,
+          created_by_ai,
           lines:journal_line(id, debit, credit)
         `)
         .order('date', { ascending: false })
@@ -40,6 +42,14 @@ export function useJournals(filters?: {
 
       if (filters?.searchTerm) {
         query = query.or(`number.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`)
+      }
+
+      if (filters?.aiFilter === 'ai') {
+        query = query.eq('created_by_ai', true)
+      }
+
+      if (filters?.aiFilter === 'manual') {
+        query = query.or('created_by_ai.is.null,created_by_ai.eq.false')
       }
 
       const { data, error } = await query

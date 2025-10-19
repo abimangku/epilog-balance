@@ -84,7 +84,8 @@ serve(async (req) => {
         date: suggestionData.date,
         period: suggestionData.period,
         description: suggestionData.description,
-        status: 'DRAFT',
+        status: 'POSTED',
+        created_by_ai: true,
         created_by: user.id
       })
       .select()
@@ -141,7 +142,7 @@ serve(async (req) => {
     await supabase.from('conversation_message').insert({
       conversation_id: conversationId,
       role: 'assistant',
-      content: `✅ Journal Entry **${journal.number}** created successfully!\n\n- Date: ${journal.date}\n- Period: ${journal.period}\n- Total Debit/Credit: Rp ${totalDebit.toLocaleString()}\n\nThe journal is in DRAFT status. You can review and post it from the Journal List.`
+      content: `✅ Journal Entry **${journal.number}** created and posted successfully!\n\n- Date: ${journal.date}\n- Period: ${journal.period}\n- Total Debit/Credit: Rp ${totalDebit.toLocaleString()}\n\n🤖 This journal was created by AI. You can review it in the Journal List and delete it if needed.`
     });
 
     return new Response(

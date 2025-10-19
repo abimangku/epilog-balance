@@ -683,6 +683,7 @@ export type Database = {
           approved_by: string | null
           created_at: string | null
           created_by: string | null
+          created_by_ai: boolean | null
           date: string
           description: string
           id: string
@@ -698,6 +699,7 @@ export type Database = {
           approved_by?: string | null
           created_at?: string | null
           created_by?: string | null
+          created_by_ai?: boolean | null
           date: string
           description: string
           id?: string
@@ -713,6 +715,7 @@ export type Database = {
           approved_by?: string | null
           created_at?: string | null
           created_by?: string | null
+          created_by_ai?: boolean | null
           date?: string
           description?: string
           id?: string

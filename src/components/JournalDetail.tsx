@@ -122,10 +122,17 @@ export function JournalDetail() {
       {/* Journal Header */}
       <div className="bg-card rounded-lg shadow p-6 mb-6">
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm text-muted-foreground">Journal Number</label>
-            <div className="font-mono text-lg text-foreground">{journal.number}</div>
-          </div>
+            <div>
+              <label className="text-sm text-muted-foreground">Journal Number</label>
+              <div className="font-mono text-lg text-foreground">
+                {journal.number}
+                {(journal as any).created_by_ai && (
+                  <span className="ml-3 text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded font-medium">
+                    🤖 Created by AI
+                  </span>
+                )}
+              </div>
+            </div>
           <div>
             <label className="text-sm text-muted-foreground">Date</label>
             <div className="text-lg text-foreground">{new Date(journal.date).toLocaleDateString()}</div>

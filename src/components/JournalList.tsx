@@ -9,10 +9,11 @@ import { Button } from '@/components/ui/button'
 export function JournalList() {
   const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7))
   const [searchTerm, setSearchTerm] = useState('')
-  const [status, setStatus] = useState('POSTED')
+  const [status, setStatus] = useState('')
+  const [aiFilter, setAiFilter] = useState('')
   const { toast } = useToast()
 
-  const { data: journals } = useJournals({ period, searchTerm, status })
+  const { data: journals } = useJournals({ period, searchTerm, status, aiFilter })
   const voidJournal = useVoidJournal()
   const deleteJournal = useDeleteJournal()
 
@@ -113,6 +114,19 @@ export function JournalList() {
           </select>
         </div>
 
+        <div>
+          <label className="block text-sm font-medium mb-1 text-foreground">Source</label>
+          <select
+            value={aiFilter}
+            onChange={(e) => setAiFilter(e.target.value)}
+            className="border border-input rounded-md px-3 py-2 bg-background text-foreground"
+          >
+            <option value="">All</option>
+            <option value="ai">🤖 AI Created</option>
+            <option value="manual">Manual</option>
+          </select>
+        </div>
+
         <div className="flex-1">
           <label className="block text-sm font-medium mb-1 text-foreground">Search</label>
           <input
@@ -146,19 +160,24 @@ export function JournalList() {
                 key={journal.id} 
                 className={`hover:bg-muted/50 ${journal.voided_at ? 'bg-destructive/10 opacity-60' : ''}`}
               >
-                <td className="p-3 border border-border font-mono text-sm text-foreground">
-                  {journal.number}
-                  {journal.is_reversal && (
-                    <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
-                      REVERSAL
-                    </span>
-                  )}
-                  {journal.voided_at && (
-                    <span className="ml-2 text-xs bg-destructive/20 text-destructive px-2 py-1 rounded">
-                      VOIDED
-                    </span>
-                  )}
-                </td>
+              <td className="p-3 border border-border font-mono text-sm text-foreground">
+                {journal.number}
+                {(journal as any).created_by_ai && (
+                  <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
+                    🤖 AI
+                  </span>
+                )}
+                {journal.is_reversal && (
+                  <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                    REVERSAL
+                  </span>
+                )}
+                {journal.voided_at && (
+                  <span className="ml-2 text-xs bg-destructive/20 text-destructive px-2 py-1 rounded">
+                    VOIDED
+                  </span>
+                )}
+              </td>
                 <td className="p-3 border border-border text-foreground">
                   {new Date(journal.date).toLocaleDateString()}
                 </td>
