@@ -165,23 +165,13 @@ export function JournalList() {
               journals.map((journal: any) => (
               <tr 
                 key={journal.id} 
-                className={`hover:bg-muted/50 ${journal.voided_at ? 'bg-destructive/10 opacity-60' : ''}`}
+                className="hover:bg-muted/50"
               >
               <td className="p-3 border border-border font-mono text-sm text-foreground">
                 {journal.number}
                 {(journal as any).created_by_ai && (
                   <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
                     🤖 AI
-                  </span>
-                )}
-                {journal.is_reversal && (
-                  <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
-                    REVERSAL
-                  </span>
-                )}
-                {journal.voided_at && (
-                  <span className="ml-2 text-xs bg-destructive/20 text-destructive px-2 py-1 rounded">
-                    VOIDED
                   </span>
                 )}
               </td>
@@ -221,7 +211,7 @@ export function JournalList() {
                       </button>
                     </>
                   )}
-                  {journal.status === 'POSTED' && !journal.voided_at && !journal.reversed_by && (
+                  {journal.status === 'POSTED' && (
                     <>
                       {' | '}
                       <button

@@ -23,9 +23,6 @@ export function useJournals(filters?: {
           description,
           status,
           period,
-          voided_at:voided_at,
-          reversed_by,
-          is_reversal,
           created_by_ai,
           lines:journal_line(id, debit, credit)
         `)
