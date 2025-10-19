@@ -294,6 +294,28 @@ export function AIAssistant() {
     const message = messages?.find(m => m.id === messageId);
     if (!message?.metadata?.suggested_data) return;
 
+    // Pre-flight validation
+    const suggestionType = message.metadata.suggestion_type;
+    const suggestionData = message.metadata.suggested_data;
+    
+    if (suggestionType === 'invoice') {
+      if (!suggestionData.lines?.every((l: any) => l.amount && l.revenue_account_code)) {
+        toast.error("Invalid Data", {
+          description: "Invoice lines are missing required fields (amount or account code). Please try again.",
+        });
+        return;
+      }
+    }
+    
+    if (suggestionType === 'bill') {
+      if (!suggestionData.lines?.every((l: any) => l.amount && l.expense_account_code)) {
+        toast.error("Invalid Data", {
+          description: "Bill lines are missing required fields (amount or account code). Please try again.",
+        });
+        return;
+      }
+    }
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -323,11 +345,21 @@ export function AIAssistant() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle validation errors
-        if (data.error?.includes('Invalid input') || data.error?.includes('validation')) {
+        // Parse validation errors specifically
+        if (data.error?.includes('Invalid input') || data.error?.includes('validation') || data.details) {
+          const details = data.details 
+            ? data.details.map((d: any) => `${d.path.join('.')}: ${d.message}`).join(', ')
+            : data.error || 'Check the data format';
+            
           toast.error("Validation Error", {
-            description: "Please check the amounts and data in the suggestion.",
+            description: `Data validation failed: ${details}`,
+            duration: 8000,
           });
+          
+          console.error('❌ Validation failed:', data);
+          if (data.received) {
+            console.error('Data received by backend:', data.received);
+          }
           return;
         }
         

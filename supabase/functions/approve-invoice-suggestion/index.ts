@@ -112,15 +112,39 @@ serve(async (req) => {
     });
 
     if (invoiceError) {
-      console.error('create-invoice failed:', invoiceError);
-      console.error('Invoice payload:', JSON.stringify({
+      console.error('❌ create-invoice FAILED');
+      console.error('Error object:', invoiceError);
+      
+      // Try to extract detailed error from response
+      let errorDetails = invoiceError.message || 'Unknown error';
+      
+      if (invoiceError.context?.bodyUsed === false) {
+        try {
+          const errorBody = await invoiceError.context.json();
+          console.error('Error body:', JSON.stringify(errorBody, null, 2));
+          errorDetails = JSON.stringify(errorBody);
+        } catch (e) {
+          console.error('Could not parse error response');
+        }
+      }
+      
+      // Log what we sent
+      console.error('Payload sent:', JSON.stringify({
         clientId: client.id,
         date: suggestionData.date,
         dueDate: suggestionData.due_date || suggestionData.date,
         projectId,
-        lines: suggestionData.lines
+        lines: suggestionData.lines.map((line: any) => ({
+          description: line.description,
+          quantity: line.quantity || 1,
+          unitPrice: line.unit_price,
+          amount: line.amount,
+          revenueAccountCode: line.revenue_account_code,
+          projectId: line.project_id || projectId
+        }))
       }, null, 2));
-      throw invoiceError;
+      
+      throw new Error(`Invoice creation failed: ${errorDetails}`);
     }
 
     // Update message status

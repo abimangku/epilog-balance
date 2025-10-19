@@ -69,7 +69,33 @@ serve(async (req) => {
       }
     });
 
-    if (paymentError) throw paymentError;
+    if (paymentError) {
+      console.error('❌ create-payment FAILED');
+      console.error('Error object:', paymentError);
+      
+      // Try to extract detailed error from response
+      let errorDetails = paymentError.message || 'Unknown error';
+      
+      if (paymentError.context?.bodyUsed === false) {
+        try {
+          const errorBody = await paymentError.context.json();
+          console.error('Error body:', JSON.stringify(errorBody, null, 2));
+          errorDetails = JSON.stringify(errorBody);
+        } catch (e) {
+          console.error('Could not parse error response');
+        }
+      }
+      
+      // Log what we sent
+      console.error('Payload sent:', JSON.stringify({
+        billId: bill.id,
+        date: suggestionData.date,
+        amount: suggestionData.amount,
+        bankAccountCode: suggestionData.bank_account_code
+      }, null, 2));
+      
+      throw new Error(`Payment creation failed: ${errorDetails}`);
+    }
 
     // Update message status
     await supabase

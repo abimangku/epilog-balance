@@ -112,14 +112,37 @@ serve(async (req) => {
     });
 
     if (billError) {
-      console.error('create-bill failed:', billError);
-      console.error('Bill payload:', JSON.stringify({
+      console.error('❌ create-bill FAILED');
+      console.error('Error object:', billError);
+      
+      // Try to extract detailed error from response
+      let errorDetails = billError.message || 'Unknown error';
+      
+      if (billError.context?.bodyUsed === false) {
+        try {
+          const errorBody = await billError.context.json();
+          console.error('Error body:', JSON.stringify(errorBody, null, 2));
+          errorDetails = JSON.stringify(errorBody);
+        } catch (e) {
+          console.error('Could not parse error response');
+        }
+      }
+      
+      // Log what we sent
+      console.error('Payload sent:', JSON.stringify({
         date: suggestionData.date,
         vendorId: vendor.id,
         projectId,
-        lines: suggestionData.lines
+        lines: suggestionData.lines.map((line: any) => ({
+          description: line.description,
+          quantity: line.quantity || 1,
+          unitPrice: line.unit_price,
+          expenseAccountCode: line.expense_account_code,
+          projectCode: line.project_code
+        }))
       }, null, 2));
-      throw billError;
+      
+      throw new Error(`Bill creation failed: ${errorDetails}`);
     }
 
     // Update message status

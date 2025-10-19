@@ -12,6 +12,7 @@ const invoiceLineSchema = z.object({
   unitPrice: z.number().min(0).max(999999999999),
   amount: z.number().min(0).max(999999999999),
   revenueAccountCode: z.string().regex(/^\d-\d{5}$/),
+  projectId: z.string().uuid().optional(),
 })
 
 const createInvoiceSchema = z.object({
@@ -60,8 +61,15 @@ serve(async (req) => {
     const validationResult = createInvoiceSchema.safeParse(body)
     
     if (!validationResult.success) {
+      console.error('❌ INVOICE VALIDATION FAILED');
+      console.error('Errors:', JSON.stringify(validationResult.error.issues, null, 2));
+      console.error('Received body:', JSON.stringify(body, null, 2));
       return new Response(
-        JSON.stringify({ error: 'Invalid input', details: validationResult.error.issues }),
+        JSON.stringify({ 
+          error: 'Invalid input', 
+          details: validationResult.error.issues,
+          received: body
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
