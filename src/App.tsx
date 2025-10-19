@@ -20,8 +20,14 @@ import { SnapshotViewer } from "./components/SnapshotViewer";
 import { ProfitLossReport } from "./components/ProfitLossReport";
 import { BalanceSheetReport } from "./components/BalanceSheetReport";
 import { TrialBalanceReport } from "./components/TrialBalanceReport";
+import { ClientManagement } from "./components/ClientManagement";
+import { VendorManagement } from "./components/VendorManagement";
+import { ProjectManagement } from "./components/ProjectManagement";
+import { RevenueByClientReport } from "./components/RevenueByClientReport";
+import { ExpensesByVendorReport } from "./components/ExpensesByVendorReport";
+import { ProjectProfitabilityReport } from "./components/ProjectProfitabilityReport";
 import NotFound from "./pages/NotFound";
-import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp, Lock, Camera, PieChart } from "lucide-react";
+import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp, Lock, Camera, PieChart, Users, Building2, FolderKanban } from "lucide-react";
 
 const queryClient = new QueryClient();
 
@@ -155,6 +161,31 @@ const App = () => (
               </div>
               
               <div className="pt-4 mt-4 border-t border-sidebar-border">
+                <div className="text-xs text-sidebar-foreground/60 px-4 mb-2 font-semibold">MASTER DATA</div>
+                <Link 
+                  to="/clients" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <Users className="h-4 w-4" />
+                  Clients
+                </Link>
+                <Link 
+                  to="/vendors" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <Building2 className="h-4 w-4" />
+                  Vendors
+                </Link>
+                <Link 
+                  to="/projects" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <FolderKanban className="h-4 w-4" />
+                  Projects
+                </Link>
+              </div>
+              
+              <div className="pt-4 mt-4 border-t border-sidebar-border">
                 <div className="text-xs text-sidebar-foreground/60 px-4 mb-2 font-semibold">REPORTS</div>
                 <Link 
                   to="/reports/profit-loss" 
@@ -176,6 +207,27 @@ const App = () => (
                 >
                   <FileStack className="h-4 w-4" />
                   Trial Balance
+                </Link>
+                <Link 
+                  to="/reports/revenue-by-client" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <DollarSign className="h-4 w-4" />
+                  Revenue by Client
+                </Link>
+                <Link 
+                  to="/reports/expenses-by-vendor" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  Expenses by Vendor
+                </Link>
+                <Link 
+                  to="/reports/project-profitability" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Project Profitability
                 </Link>
               </div>
             </nav>
@@ -201,6 +253,12 @@ const App = () => (
               <Route path="/reports/profit-loss" element={<ProfitLossReport />} />
               <Route path="/reports/balance-sheet" element={<BalanceSheetReport />} />
               <Route path="/reports/trial-balance" element={<TrialBalanceReport />} />
+              <Route path="/clients" element={<ClientManagement />} />
+              <Route path="/vendors" element={<VendorManagement />} />
+              <Route path="/projects" element={<ProjectManagement />} />
+              <Route path="/reports/revenue-by-client" element={<RevenueByClientReport />} />
+              <Route path="/reports/expenses-by-vendor" element={<ExpensesByVendorReport />} />
+              <Route path="/reports/project-profitability" element={<ProjectProfitabilityReport />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
