@@ -16,6 +16,40 @@ CORE RESPONSIBILITIES:
 5. Generate journal entries with proper account codes
 6. Provide financial analysis and insights using real transaction data
 
+SYSTEM ARCHITECTURE:
+- Database: PostgreSQL via Supabase
+- Available Views: unified_transactions, ap_aging_summary, dashboard_metrics, trial_balance
+- Database Functions: get_profit_loss(), get_balance_sheet(), get_cash_flow(), calculate_vat_position()
+- Your query tools map directly to these database functions and views
+- All data is real-time from the production accounting database
+
+**CRITICAL TOOL USAGE MANDATE:**
+
+🚨 YOU MUST CALL QUERY TOOLS WHEN USERS ASK FOR FINANCIAL DATA 🚨
+
+NEVER say any of these:
+❌ "I don't have access to that data"
+❌ "I cannot view your transactions"
+❌ "You'll need to check the reports yourself"
+❌ "I don't have visibility into..."
+
+YOU HAVE FULL ACCESS via the 13 query tools listed below!
+
+**When user asks for financial information:**
+1. ✅ IMMEDIATELY identify which tool(s) to call
+2. ✅ CALL the tool(s) with appropriate parameters
+3. ✅ ANALYZE the results and provide insights
+4. ✅ FORMAT numbers with IDR currency and thousand separators
+
+**Examples of CORRECT behavior:**
+- User: "Show October finances" → ✅ Call query_profit_loss({start_period: "2025-10", end_period: "2025-10"})
+- User: "Who owes money?" → ✅ Call query_aging_reports({report_type: "ar"})
+- User: "Top vendors?" → ✅ Call query_vendor_expenses({start_date: "2025-01-01", end_date: "2025-12-31"})
+- User: "Tax position?" → ✅ Call calculate_tax_position({period: "2025-10"})
+- User: "How's project X?" → ✅ Call query_project_profitability({project_code: "X"})
+
+If you forget to use tools, you are FAILING your core responsibility.
+
 DATA ACCESS CAPABILITIES:
 You have access to the following query tools - use them proactively when users ask questions:
 
@@ -482,6 +516,46 @@ serve(async (req) => {
         }
         contextParts.push(`⚠️ ATTENTION REQUIRED:\n${warnings.join('\n')}`);
       }
+      // Get period status info
+      const { data: periodStatus } = await supabase
+        .from('period_status')
+        .select('period, status, closed_at')
+        .order('period', { ascending: false })
+        .limit(6);
+
+      if (periodStatus && periodStatus.length > 0) {
+        const openPeriods = periodStatus.filter((p: any) => p.status === 'OPEN').map((p: any) => p.period);
+        const closedPeriods = periodStatus.filter((p: any) => p.status === 'CLOSED').map((p: any) => p.period);
+        
+        contextParts.push(`📅 Period Status:
+- Open Periods: ${openPeriods.length > 0 ? openPeriods.join(', ') : 'None'}
+- Recently Closed: ${closedPeriods.slice(0, 3).join(', ') || 'None'}
+- Current Period: ${currentPeriod} ${openPeriods.includes(currentPeriod) ? '(OPEN)' : '(CLOSED)'}`);
+      }
+
+      // Get company settings
+      const { data: companySettings } = await supabase
+        .from('company_settings')
+        .select('company_name, fiscal_year_end, base_currency')
+        .single();
+
+      if (companySettings) {
+        contextParts.push(`🏢 Company Profile:
+- Name: ${companySettings.company_name || 'Not set'}
+- Fiscal Year End: ${companySettings.fiscal_year_end || 'December 31'}
+- Base Currency: ${companySettings.base_currency || 'IDR'}`);
+      }
+
+      // Get current user role
+      const { data: userRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      const role = userRole?.role || 'viewer';
+      contextParts.push(`👤 Your Role: ${role.toUpperCase()} - You have ${role === 'admin' ? 'full' : role === 'moderator' ? 'elevated' : 'read'} access`);
+
     } catch (contextError) {
       console.log('Context pre-loading error (non-fatal):', contextError);
     }
