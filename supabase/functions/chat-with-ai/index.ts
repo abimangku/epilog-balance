@@ -14,6 +14,42 @@ CORE RESPONSIBILITIES:
 3. Proactively warn about missing documentation, incorrect classifications, or tax risks
 4. Help accountants avoid common mistakes and ensure regulatory compliance
 5. Generate journal entries with proper account codes
+6. Provide financial analysis and insights using real transaction data
+
+DATA ACCESS CAPABILITIES:
+You have access to the following query tools - use them proactively when users ask questions:
+
+1. **query_transactions** - For transaction history, filtering by date/type/status
+2. **query_profit_loss** - For P&L reports and profitability analysis
+3. **query_balance_sheet** - For financial position and account balances
+4. **query_cash_flow** - For cash movement analysis
+5. **query_aging_reports** - For overdue bills and invoices (AP/AR aging)
+6. **query_journal_details** - For specific journal entry details with attachments
+7. **query_vendor_expenses** - For vendor spending analysis
+8. **query_client_revenue** - For client revenue analysis and payment history
+9. **query_project_profitability** - For project margin analysis and unbilled revenue
+10. **calculate_tax_position** - For tax payable calculations (VAT, PPh)
+11. **compare_periods** - For variance analysis between two periods
+12. **trend_analysis** - For trends over multiple periods
+13. **compliance_check** - For active compliance issues
+
+PROACTIVE ANALYSIS BEHAVIORS:
+When user asks for financial summaries or analysis:
+1. Call the appropriate query tool(s) to get actual data - NEVER make up numbers
+2. Analyze the data and provide insights with specific numbers
+3. Compare current period to previous periods when relevant
+4. Highlight anomalies, risks, or opportunities
+5. Suggest action items (e.g., "Client X is 30 days overdue - consider follow-up")
+6. Use IDR currency format with thousands separators (e.g., "IDR 10,500,000")
+
+Examples of what to do:
+- User: "Show me October finances" → Call query_profit_loss for October, analyze revenue/costs
+- User: "Who owes us money?" → Call query_aging_reports for AR, list overdue invoices
+- User: "Analyze vendor spending" → Call query_vendor_expenses, show top vendors
+- User: "Project profitability?" → Call query_project_profitability, show margins
+- User: "Financial summary from October" → Call query_profit_loss, query_cash_flow, provide comprehensive analysis
+- User: "How much did we pay vendor X?" → Call query_vendor_expenses with vendor filter
+- User: "What's our tax position?" → Call calculate_tax_position for current period
 
 INDONESIAN TAX RULES YOU MUST ENFORCE:
 
@@ -348,6 +384,108 @@ serve(async (req) => {
         .join('\n\n')}`);
     }
 
+    // Pre-load current month financial summary
+    const currentPeriod = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const today = new Date().toISOString().slice(0, 10);
+
+    try {
+      // Get P&L for current month
+      const { data: plData } = await supabase.rpc('get_profit_loss', {
+        p_start_period: currentPeriod,
+        p_end_period: currentPeriod
+      });
+
+      if (plData && plData.length > 0) {
+        const revenue = plData.filter((x: any) => x.account_type === 'REVENUE')
+          .reduce((sum: number, x: any) => sum + Number(x.amount || 0), 0);
+        const cogs = plData.filter((x: any) => x.account_type === 'COGS')
+          .reduce((sum: number, x: any) => sum + Number(x.amount || 0), 0);
+        const opex = plData.filter((x: any) => x.account_type === 'OPEX')
+          .reduce((sum: number, x: any) => sum + Number(x.amount || 0), 0);
+        
+        contextParts.push(`📊 Current Month Financial Summary (${currentPeriod}):
+- Revenue: IDR ${revenue.toLocaleString('id-ID')}
+- COGS: IDR ${cogs.toLocaleString('id-ID')}
+- OPEX: IDR ${opex.toLocaleString('id-ID')}
+- Gross Profit: IDR ${(revenue - cogs).toLocaleString('id-ID')} (${revenue > 0 ? ((revenue - cogs) / revenue * 100).toFixed(1) : 0}%)
+- Net Profit: IDR ${(revenue - cogs - opex).toLocaleString('id-ID')} (${revenue > 0 ? ((revenue - cogs - opex) / revenue * 100).toFixed(1) : 0}%)`);
+      }
+
+      // Get cash position
+      const { data: bsData } = await supabase.rpc('get_balance_sheet', {
+        p_as_of_date: today
+      });
+
+      if (bsData && bsData.length > 0) {
+        const cashAccounts = bsData.filter((x: any) => x.account_code.startsWith('1-11'));
+        const totalCash = cashAccounts.reduce((sum: number, x: any) => sum + Number(x.balance || 0), 0);
+        
+        const cashDetails = cashAccounts
+          .map((x: any) => `  - ${x.account_name}: IDR ${Number(x.balance || 0).toLocaleString('id-ID')}`)
+          .join('\n');
+        
+        contextParts.push(`💰 Cash Position (as of ${today}):\n${cashDetails}\n  Total Cash: IDR ${totalCash.toLocaleString('id-ID')}`);
+      }
+
+      // Get transaction counts for current month
+      const monthStart = `${currentPeriod}-01`;
+      
+      const { count: journalCount } = await supabase
+        .from('journal')
+        .select('*', { count: 'exact', head: true })
+        .gte('date', monthStart)
+        .eq('status', 'POSTED');
+
+      const { count: billCount } = await supabase
+        .from('vendor_bill')
+        .select('*', { count: 'exact', head: true })
+        .gte('date', monthStart)
+        .neq('status', 'DRAFT');
+
+      const { count: invoiceCount } = await supabase
+        .from('sales_invoice')
+        .select('*', { count: 'exact', head: true })
+        .gte('date', monthStart)
+        .neq('status', 'DRAFT');
+
+      contextParts.push(`📈 Transaction Activity (${currentPeriod}):
+- Posted Journals: ${journalCount || 0}
+- Approved Bills: ${billCount || 0}
+- Invoices Issued: ${invoiceCount || 0}`);
+
+      // Get overdue items
+      const { data: overdueInvoices, count: overdueInvCount } = await supabase
+        .from('sales_invoice')
+        .select('number, total', { count: 'exact' })
+        .lt('due_date', today)
+        .not('status', 'in', '(PAID,DRAFT,VOIDED)')
+        .order('due_date', { ascending: true })
+        .limit(5);
+
+      const { data: overdueBills, count: overdueBillCount } = await supabase
+        .from('vendor_bill')
+        .select('number, total', { count: 'exact' })
+        .lt('due_date', today)
+        .not('status', 'in', '(PAID,DRAFT,VOIDED)')
+        .order('due_date', { ascending: true })
+        .limit(5);
+
+      if ((overdueInvCount && overdueInvCount > 0) || (overdueBillCount && overdueBillCount > 0)) {
+        const warnings = [];
+        if (overdueInvCount && overdueInvCount > 0) {
+          const totalOverdueAR = overdueInvoices?.reduce((sum: number, inv: any) => sum + Number(inv.total || 0), 0) || 0;
+          warnings.push(`⚠️ ${overdueInvCount} overdue invoice(s) - Total AR: IDR ${totalOverdueAR.toLocaleString('id-ID')}`);
+        }
+        if (overdueBillCount && overdueBillCount > 0) {
+          const totalOverdueAP = overdueBills?.reduce((sum: number, bill: any) => sum + Number(bill.total || 0), 0) || 0;
+          warnings.push(`⚠️ ${overdueBillCount} overdue bill(s) - Total AP: IDR ${totalOverdueAP.toLocaleString('id-ID')}`);
+        }
+        contextParts.push(`⚠️ ATTENTION REQUIRED:\n${warnings.join('\n')}`);
+      }
+    } catch (contextError) {
+      console.log('Context pre-loading error (non-fatal):', contextError);
+    }
+
     const contextMessage = contextParts.length > 0 
       ? `\n\nCONTEXT FOR THIS CONVERSATION:\n${contextParts.join('\n\n')}`
       : '';
@@ -546,6 +684,206 @@ serve(async (req) => {
                   endDate: { type: 'string' }
                 },
                 required: ['name', 'code']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'query_transactions',
+              description: 'Query transaction history from unified_transactions view. Use when user asks about transactions, history, or "what happened in" a specific period.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  start_date: { type: 'string', description: 'YYYY-MM-DD format (required)' },
+                  end_date: { type: 'string', description: 'YYYY-MM-DD format (required)' },
+                  type: { type: 'string', enum: ['journal', 'bill', 'invoice', 'receipt', 'all'], description: 'Transaction type filter' },
+                  status: { type: 'string', description: 'Status filter (e.g., POSTED, PAID, DRAFT)' }
+                },
+                required: ['start_date', 'end_date']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'query_profit_loss',
+              description: 'Get Profit & Loss report for a period. Use when user asks for P&L, profitability, revenue/expenses breakdown.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  start_period: { type: 'string', description: 'YYYY-MM format (required)' },
+                  end_period: { type: 'string', description: 'YYYY-MM format (optional, defaults to start_period)' }
+                },
+                required: ['start_period']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'query_balance_sheet',
+              description: 'Get Balance Sheet as of a specific date. Use when user asks for financial position, assets, liabilities, equity, or account balances.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  as_of_date: { type: 'string', description: 'YYYY-MM-DD format (required)' }
+                },
+                required: ['as_of_date']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'query_cash_flow',
+              description: 'Get Cash Flow statement. Use when user asks about cash movement, where cash went, operating/investing/financing activities.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  start_date: { type: 'string', description: 'YYYY-MM-DD format (required)' },
+                  end_date: { type: 'string', description: 'YYYY-MM-DD format (required)' }
+                },
+                required: ['start_date', 'end_date']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'query_aging_reports',
+              description: 'Get AP/AR aging reports for overdue bills and invoices. Use when user asks who owes money, overdue items, aging.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  report_type: { type: 'string', enum: ['AR', 'AP', 'both'], description: 'AR for receivables, AP for payables' },
+                  as_of_date: { type: 'string', description: 'YYYY-MM-DD format (optional, defaults to today)' },
+                  vendor_name: { type: 'string', description: 'Filter by vendor name (for AP)' },
+                  client_name: { type: 'string', description: 'Filter by client name (for AR)' }
+                },
+                required: ['report_type']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'query_journal_details',
+              description: 'Get specific journal entry details with all lines. Use when user asks for details of a specific journal number.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  journal_number: { type: 'string', description: 'Journal number (e.g., JRN-2025-0042)' }
+                },
+                required: ['journal_number']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'query_vendor_expenses',
+              description: 'Analyze expenses by vendor. Use when user asks how much paid to a vendor, vendor spending analysis.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  vendor_name: { type: 'string', description: 'Vendor name (optional, omit for all vendors)' },
+                  start_date: { type: 'string', description: 'YYYY-MM-DD format (required)' },
+                  end_date: { type: 'string', description: 'YYYY-MM-DD format (required)' }
+                },
+                required: ['start_date', 'end_date']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'query_client_revenue',
+              description: 'Analyze revenue by client. Use when user asks about client revenue, payment history, outstanding amounts.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  client_name: { type: 'string', description: 'Client name (optional, omit for all clients)' },
+                  start_date: { type: 'string', description: 'YYYY-MM-DD format (required)' },
+                  end_date: { type: 'string', description: 'YYYY-MM-DD format (required)' }
+                },
+                required: ['start_date', 'end_date']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'query_project_profitability',
+              description: 'Analyze project profitability with revenue vs COGS. Use when user asks about project margins, profitability.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  project_name: { type: 'string', description: 'Project name (optional, omit for all projects)' },
+                  include_unbilled: { type: 'boolean', description: 'Include unbilled revenue' }
+                },
+                required: []
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'calculate_tax_position',
+              description: 'Calculate tax position (VAT, PPh). Use when user asks about tax payable, tax position, VAT owed.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  period: { type: 'string', description: 'YYYY-MM format (required)' }
+                },
+                required: ['period']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'compare_periods',
+              description: 'Compare two periods side-by-side for variance analysis. Use when user asks to compare months, YoY, MoM.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  period1: { type: 'string', description: 'First period YYYY-MM (required)' },
+                  period2: { type: 'string', description: 'Second period YYYY-MM (required)' },
+                  metric: { type: 'string', enum: ['revenue', 'expenses', 'profit', 'all'], description: 'What to compare' }
+                },
+                required: ['period1', 'period2']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'trend_analysis',
+              description: 'Show trends over multiple periods. Use when user asks for trends, patterns, growth over time.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  start_period: { type: 'string', description: 'Start period YYYY-MM (required)' },
+                  end_period: { type: 'string', description: 'End period YYYY-MM (required)' },
+                  metric: { type: 'string', enum: ['revenue', 'expenses', 'profit', 'cash'], description: 'What to analyze' }
+                },
+                required: ['start_period', 'end_period', 'metric']
+              }
+            }
+          },
+          {
+            type: 'function',
+            function: {
+              name: 'compliance_check',
+              description: 'Check for active compliance issues. Use when user asks about compliance, issues, what needs fixing.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  severity: { type: 'string', enum: ['all', 'high', 'medium', 'low'], description: 'Filter by severity' },
+                  status: { type: 'string', enum: ['all', 'open', 'resolved'], description: 'Filter by status' }
+                },
+                required: []
               }
             }
           }
