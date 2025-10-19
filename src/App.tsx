@@ -44,7 +44,9 @@ import InvoiceList from "./components/InvoiceList";
 import InvoiceDetail from "./components/InvoiceDetail";
 import ReceiptList from "./components/ReceiptList";
 import AccountManagement from "./components/AccountManagement";
-import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp, Lock, Camera, PieChart, Users, Building2, FolderKanban, List, FileCheck, Settings, FileSpreadsheet, Landmark, ChevronDown, AlertCircle } from "lucide-react";
+import { TransactionsList } from "./components/TransactionsList";
+import { AIActivityLog } from "./components/AIActivityLog";
+import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp, Lock, Camera, PieChart, Users, Building2, FolderKanban, List, FileCheck, Settings, FileSpreadsheet, Landmark, ChevronDown, AlertCircle, Activity } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const queryClient = new QueryClient();
@@ -76,6 +78,13 @@ const App = () => (
               >
                 <Home className="h-4 w-4" />
                 Classic Dashboard
+              </Link>
+              <Link 
+                to="/transactions" 
+                className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+              >
+                <List className="h-4 w-4" />
+                All Transactions
               </Link>
               <Link 
                 to="/accounts" 
@@ -135,6 +144,13 @@ const App = () => (
                 >
                   <Brain className="h-4 w-4" />
                   AI Assistant
+                </Link>
+                <Link 
+                  to="/ai/activity" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <Activity className="h-4 w-4" />
+                  AI Activity Log
                 </Link>
                 <Link 
                   to="/compliance" 
@@ -331,7 +347,8 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/" element={<ProtectedRoute><AIHomePage /></ProtectedRoute>} />
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/transactions" element={<ProtectedRoute><TransactionsList /></ProtectedRoute>} />
               <Route path="/accounts" element={<ProtectedRoute><AccountManagement /></ProtectedRoute>} />
               <Route path="/journals" element={<ProtectedRoute><JournalList /></ProtectedRoute>} />
               <Route path="/journals/:id" element={<ProtectedRoute><JournalDetail /></ProtectedRoute>} />
@@ -343,6 +360,7 @@ const App = () => (
               <Route path="/receipts/new" element={<ProtectedRoute><ReceiptForm /></ProtectedRoute>} />
               <Route path="/reports/ar-aging" element={<ProtectedRoute><ARAgingReport /></ProtectedRoute>} />
               <Route path="/ai/assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
+              <Route path="/ai/activity" element={<ProtectedRoute><AIActivityLog /></ProtectedRoute>} />
               <Route path="/bills" element={<ProtectedRoute><BillList /></ProtectedRoute>} />
               <Route path="/bills/:id" element={<ProtectedRoute><BillDetail /></ProtectedRoute>} />
               <Route path="/bills/new" element={<ProtectedRoute><BillForm /></ProtectedRoute>} />

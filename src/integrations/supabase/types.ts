@@ -1504,6 +1504,22 @@ export type Database = {
         }
         Relationships: []
       }
+      unified_transactions: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          created_by: string | null
+          date: string | null
+          description: string | null
+          id: string | null
+          number: string | null
+          source_doc_id: string | null
+          source_doc_type: string | null
+          status: string | null
+          type: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_vat_position: {
