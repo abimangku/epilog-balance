@@ -34,6 +34,18 @@ export function AIAssistant() {
     setStreamingContent('');
 
     try {
+      // Check authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: 'Authentication Required',
+          description: 'Please log in to use AI Assistant',
+          variant: 'destructive'
+        });
+        setIsStreaming(false);
+        return;
+      }
+
       // Upload files if any
       let attachmentData: any[] = [];
       if (attachedFiles.length > 0) {
@@ -51,14 +63,14 @@ export function AIAssistant() {
         setAttachedFiles([]);
       }
 
-      // Call streaming endpoint
+      // Call streaming endpoint with user's JWT token
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-ai`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'Authorization': `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             conversationId: selectedConversation,
