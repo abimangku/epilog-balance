@@ -527,8 +527,57 @@ export function AIAssistant() {
               {msg.role === 'assistant' && msg.metadata?.action_type ? (
                 <div className="max-w-[80%]">
                   <div className="mb-2 rounded-lg p-4 bg-muted">
-                    <div className="prose prose-sm max-w-none">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <ReactMarkdown
+                        components={{
+                          table: ({ node, ...props }) => (
+                            <div className="my-4 overflow-x-auto">
+                              <table className="min-w-full divide-y divide-border border border-border rounded-lg" {...props} />
+                            </div>
+                          ),
+                          thead: ({ node, ...props }) => (
+                            <thead className="bg-muted/50" {...props} />
+                          ),
+                          th: ({ node, ...props }) => (
+                            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider" {...props} />
+                          ),
+                          tbody: ({ node, ...props }) => (
+                            <tbody className="divide-y divide-border" {...props} />
+                          ),
+                          tr: ({ node, ...props }) => (
+                            <tr className="hover:bg-muted/30 transition-colors" {...props} />
+                          ),
+                          td: ({ node, ...props }) => (
+                            <td className="px-4 py-2 text-sm" {...props} />
+                          ),
+                          h2: ({ node, ...props }) => (
+                            <h2 className="text-xl font-bold mt-6 mb-3" {...props} />
+                          ),
+                          h3: ({ node, ...props }) => (
+                            <h3 className="text-lg font-semibold mt-4 mb-2" {...props} />
+                          ),
+                          ul: ({ node, ...props }) => (
+                            <ul className="list-none space-y-1 my-3" {...props} />
+                          ),
+                          ol: ({ node, ...props }) => (
+                            <ol className="list-decimal list-inside space-y-1 my-3" {...props} />
+                          ),
+                          li: ({ node, ...props }) => (
+                            <li className="leading-relaxed" {...props} />
+                          ),
+                          strong: ({ node, ...props }) => (
+                            <strong className="font-bold" {...props} />
+                          ),
+                          p: ({ node, ...props }) => (
+                            <p className="my-2 leading-relaxed" {...props} />
+                          ),
+                          code: ({ node, ...props }) => (
+                            <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" {...props} />
+                          ),
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
                     </div>
                   </div>
                   <AIActionCard
@@ -541,8 +590,57 @@ export function AIAssistant() {
                 <div className="max-w-[80%] w-full">
                   {msg.content && (
                     <div className="mb-2 rounded-lg p-4 bg-muted">
-                      <div className="prose prose-sm max-w-none">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <ReactMarkdown
+                          components={{
+                            table: ({ node, ...props }) => (
+                              <div className="my-4 overflow-x-auto">
+                                <table className="min-w-full divide-y divide-border border border-border rounded-lg" {...props} />
+                              </div>
+                            ),
+                            thead: ({ node, ...props }) => (
+                              <thead className="bg-muted/50" {...props} />
+                            ),
+                            th: ({ node, ...props }) => (
+                              <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider" {...props} />
+                            ),
+                            tbody: ({ node, ...props }) => (
+                              <tbody className="divide-y divide-border" {...props} />
+                            ),
+                            tr: ({ node, ...props }) => (
+                              <tr className="hover:bg-muted/30 transition-colors" {...props} />
+                            ),
+                            td: ({ node, ...props }) => (
+                              <td className="px-4 py-2 text-sm" {...props} />
+                            ),
+                            h2: ({ node, ...props }) => (
+                              <h2 className="text-xl font-bold mt-6 mb-3" {...props} />
+                            ),
+                            h3: ({ node, ...props }) => (
+                              <h3 className="text-lg font-semibold mt-4 mb-2" {...props} />
+                            ),
+                            ul: ({ node, ...props }) => (
+                              <ul className="list-none space-y-1 my-3" {...props} />
+                            ),
+                            ol: ({ node, ...props }) => (
+                              <ol className="list-decimal list-inside space-y-1 my-3" {...props} />
+                            ),
+                            li: ({ node, ...props }) => (
+                              <li className="leading-relaxed" {...props} />
+                            ),
+                            strong: ({ node, ...props }) => (
+                              <strong className="font-bold" {...props} />
+                            ),
+                            p: ({ node, ...props }) => (
+                              <p className="my-2 leading-relaxed" {...props} />
+                            ),
+                            code: ({ node, ...props }) => (
+                              <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" {...props} />
+                            ),
+                          }}
+                        >
+                          {msg.content}
+                        </ReactMarkdown>
                       </div>
                     </div>
                   )}
@@ -565,8 +663,57 @@ export function AIAssistant() {
                   }`}
                 >
                   {msg.role === 'assistant' ? (
-                    <div className="prose prose-sm max-w-none">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <ReactMarkdown
+                        components={{
+                          table: ({ node, ...props }) => (
+                            <div className="my-4 overflow-x-auto">
+                              <table className="min-w-full divide-y divide-border border border-border rounded-lg" {...props} />
+                            </div>
+                          ),
+                          thead: ({ node, ...props }) => (
+                            <thead className="bg-muted/50" {...props} />
+                          ),
+                          th: ({ node, ...props }) => (
+                            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider" {...props} />
+                          ),
+                          tbody: ({ node, ...props }) => (
+                            <tbody className="divide-y divide-border" {...props} />
+                          ),
+                          tr: ({ node, ...props }) => (
+                            <tr className="hover:bg-muted/30 transition-colors" {...props} />
+                          ),
+                          td: ({ node, ...props }) => (
+                            <td className="px-4 py-2 text-sm" {...props} />
+                          ),
+                          h2: ({ node, ...props }) => (
+                            <h2 className="text-xl font-bold mt-6 mb-3" {...props} />
+                          ),
+                          h3: ({ node, ...props }) => (
+                            <h3 className="text-lg font-semibold mt-4 mb-2" {...props} />
+                          ),
+                          ul: ({ node, ...props }) => (
+                            <ul className="list-none space-y-1 my-3" {...props} />
+                          ),
+                          ol: ({ node, ...props }) => (
+                            <ol className="list-decimal list-inside space-y-1 my-3" {...props} />
+                          ),
+                          li: ({ node, ...props }) => (
+                            <li className="leading-relaxed" {...props} />
+                          ),
+                          strong: ({ node, ...props }) => (
+                            <strong className="font-bold" {...props} />
+                          ),
+                          p: ({ node, ...props }) => (
+                            <p className="my-2 leading-relaxed" {...props} />
+                          ),
+                          code: ({ node, ...props }) => (
+                            <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" {...props} />
+                          ),
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
                     </div>
                   ) : (
                     <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -581,16 +728,68 @@ export function AIAssistant() {
             <div className="flex justify-start">
               <div className="max-w-[80%]">
                 {progressSteps.length > 0 ? (
-                  <AIProgressIndicator steps={progressSteps} message="Processing..." />
+                  <AIProgressIndicator steps={progressSteps} message="Processing your request..." />
                 ) : streamingContent ? (
                   <div className="rounded-lg p-4 bg-muted">
-                    <div className="prose prose-sm max-w-none">
-                      <ReactMarkdown>{streamingContent}</ReactMarkdown>
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <ReactMarkdown
+                        components={{
+                          table: ({ node, ...props }) => (
+                            <div className="my-4 overflow-x-auto">
+                              <table className="min-w-full divide-y divide-border border border-border rounded-lg" {...props} />
+                            </div>
+                          ),
+                          thead: ({ node, ...props }) => (
+                            <thead className="bg-muted/50" {...props} />
+                          ),
+                          th: ({ node, ...props }) => (
+                            <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider" {...props} />
+                          ),
+                          tbody: ({ node, ...props }) => (
+                            <tbody className="divide-y divide-border" {...props} />
+                          ),
+                          tr: ({ node, ...props }) => (
+                            <tr className="hover:bg-muted/30 transition-colors" {...props} />
+                          ),
+                          td: ({ node, ...props }) => (
+                            <td className="px-4 py-2 text-sm" {...props} />
+                          ),
+                          h2: ({ node, ...props }) => (
+                            <h2 className="text-xl font-bold mt-6 mb-3" {...props} />
+                          ),
+                          h3: ({ node, ...props }) => (
+                            <h3 className="text-lg font-semibold mt-4 mb-2" {...props} />
+                          ),
+                          ul: ({ node, ...props }) => (
+                            <ul className="list-none space-y-1 my-3" {...props} />
+                          ),
+                          ol: ({ node, ...props }) => (
+                            <ol className="list-decimal list-inside space-y-1 my-3" {...props} />
+                          ),
+                          li: ({ node, ...props }) => (
+                            <li className="leading-relaxed" {...props} />
+                          ),
+                          strong: ({ node, ...props }) => (
+                            <strong className="font-bold" {...props} />
+                          ),
+                          p: ({ node, ...props }) => (
+                            <p className="my-2 leading-relaxed" {...props} />
+                          ),
+                          code: ({ node, ...props }) => (
+                            <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" {...props} />
+                          ),
+                        }}
+                      >
+                        {streamingContent}
+                      </ReactMarkdown>
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-lg p-4 bg-muted">
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                  <div className="rounded-lg p-4 bg-muted animate-pulse">
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">AI is thinking...</span>
+                    </div>
                   </div>
                 )}
               </div>

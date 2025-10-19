@@ -22,6 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import ReactMarkdown from 'react-markdown';
 import { SuggestionCard } from './SuggestionCard';
 import { ScrollArea } from './ui/scroll-area';
+import { AIProgressIndicator } from './AIProgressIndicator';
 
 interface AutoResizeProps {
   minHeight: number;
@@ -83,7 +84,9 @@ export function AIHomePage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [progressSteps, setProgressSteps] = useState<Array<{ label: string; status: 'pending' | 'in_progress' | 'complete' }>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastStreamUpdateRef = useRef<number>(0);
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 48,
     maxHeight: 150,
@@ -233,12 +236,27 @@ export function AIHomePage() {
             
             if (content) {
               fullContent += content;
-              setStreamingContent(fullContent);
+              // Buffer updates for smoother rendering (every 50ms or 15 chars)
+              const now = Date.now();
+              if (now - lastStreamUpdateRef.current > 50 || fullContent.length % 15 === 0) {
+                setStreamingContent(fullContent);
+                lastStreamUpdateRef.current = now;
+              }
             }
 
             if (toolCalls && toolCalls.length > 0) {
               const toolCall = toolCalls[0];
               if (toolCall.function?.name && toolCall.function?.arguments) {
+                const funcName = toolCall.function.name;
+                
+                // Show loading indicator for query tools
+                if (funcName.startsWith('query_') || funcName === 'calculate_tax_position') {
+                  setProgressSteps([
+                    { label: '🔍 Querying database', status: 'in_progress' as const },
+                    { label: '📊 Analyzing data', status: 'pending' as const },
+                    { label: '📝 Preparing report', status: 'pending' as const }
+                  ]);
+                }
                 try {
                   const funcName = toolCall.function.name;
                   const args = JSON.parse(toolCall.function.arguments);
@@ -277,6 +295,14 @@ export function AIHomePage() {
           }
         }
       }
+
+      // Ensure final buffer flush
+      if (fullContent && streamingContent !== fullContent) {
+        setStreamingContent(fullContent);
+      }
+
+      // Clear progress after completion
+      setProgressSteps([]);
 
       // Validate: Warn if AI responded with text-based journal instead of tool call
       if ((fullContent.includes('Suggested Journal Entry') || 
@@ -514,28 +540,142 @@ export function AIHomePage() {
                 ) : (
                   <div className="bg-gray-800/80 backdrop-blur-sm text-gray-100 rounded-2xl px-5 py-3 max-w-[80%] shadow-lg border border-gray-700/40">
                     <div className="text-sm leading-relaxed prose prose-invert prose-sm max-w-none">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown
+                        components={{
+                          table: ({ node, ...props }) => (
+                            <div className="my-4 overflow-x-auto">
+                              <table className="min-w-full divide-y divide-gray-600 border border-gray-600 rounded-lg" {...props} />
+                            </div>
+                          ),
+                          thead: ({ node, ...props }) => (
+                            <thead className="bg-gray-700/50" {...props} />
+                          ),
+                          th: ({ node, ...props }) => (
+                            <th className="px-4 py-2 text-left text-xs font-semibold text-gray-200 uppercase tracking-wider" {...props} />
+                          ),
+                          tbody: ({ node, ...props }) => (
+                            <tbody className="divide-y divide-gray-700" {...props} />
+                          ),
+                          tr: ({ node, ...props }) => (
+                            <tr className="hover:bg-gray-700/30 transition-colors" {...props} />
+                          ),
+                          td: ({ node, ...props }) => (
+                            <td className="px-4 py-2 text-sm text-gray-300" {...props} />
+                          ),
+                          h2: ({ node, ...props }) => (
+                            <h2 className="text-xl font-bold mt-6 mb-3 text-white" {...props} />
+                          ),
+                          h3: ({ node, ...props }) => (
+                            <h3 className="text-lg font-semibold mt-4 mb-2 text-gray-200" {...props} />
+                          ),
+                          ul: ({ node, ...props }) => (
+                            <ul className="list-none space-y-1 my-3" {...props} />
+                          ),
+                          ol: ({ node, ...props }) => (
+                            <ol className="list-decimal list-inside space-y-1 my-3" {...props} />
+                          ),
+                          li: ({ node, ...props }) => (
+                            <li className="text-gray-300 leading-relaxed" {...props} />
+                          ),
+                          strong: ({ node, ...props }) => (
+                            <strong className="font-bold text-white" {...props} />
+                          ),
+                          p: ({ node, ...props }) => (
+                            <p className="my-2 leading-relaxed text-gray-300" {...props} />
+                          ),
+                          code: ({ node, ...props }) => (
+                            <code className="bg-gray-700/50 px-1.5 py-0.5 rounded text-sm font-mono text-blue-300" {...props} />
+                          ),
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
                     </div>
                   </div>
                 )}
               </div>
             ))}
 
+            {/* Progress indicator for tool execution */}
+            {progressSteps.length > 0 && (
+              <div className="flex justify-start mb-4">
+                <div className="max-w-[80%]">
+                  <AIProgressIndicator 
+                    steps={progressSteps}
+                    message="Processing your request..."
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Streaming indicator */}
             {isStreaming && streamingContent && (
               <div className="flex justify-start">
                 <div className="bg-gray-800/80 backdrop-blur-sm text-gray-100 rounded-2xl px-5 py-3 max-w-[80%] shadow-lg border border-gray-700/40">
                   <div className="text-sm leading-relaxed prose prose-invert prose-sm max-w-none">
-                    <ReactMarkdown>{streamingContent}</ReactMarkdown>
+                    <ReactMarkdown
+                      components={{
+                        table: ({ node, ...props }) => (
+                          <div className="my-4 overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-600 border border-gray-600 rounded-lg" {...props} />
+                          </div>
+                        ),
+                        thead: ({ node, ...props }) => (
+                          <thead className="bg-gray-700/50" {...props} />
+                        ),
+                        th: ({ node, ...props }) => (
+                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-200 uppercase tracking-wider" {...props} />
+                        ),
+                        tbody: ({ node, ...props }) => (
+                          <tbody className="divide-y divide-gray-700" {...props} />
+                        ),
+                        tr: ({ node, ...props }) => (
+                          <tr className="hover:bg-gray-700/30 transition-colors" {...props} />
+                        ),
+                        td: ({ node, ...props }) => (
+                          <td className="px-4 py-2 text-sm text-gray-300" {...props} />
+                        ),
+                        h2: ({ node, ...props }) => (
+                          <h2 className="text-xl font-bold mt-6 mb-3 text-white" {...props} />
+                        ),
+                        h3: ({ node, ...props }) => (
+                          <h3 className="text-lg font-semibold mt-4 mb-2 text-gray-200" {...props} />
+                        ),
+                        ul: ({ node, ...props }) => (
+                          <ul className="list-none space-y-1 my-3" {...props} />
+                        ),
+                        ol: ({ node, ...props }) => (
+                          <ol className="list-decimal list-inside space-y-1 my-3" {...props} />
+                        ),
+                        li: ({ node, ...props }) => (
+                          <li className="text-gray-300 leading-relaxed" {...props} />
+                        ),
+                        strong: ({ node, ...props }) => (
+                          <strong className="font-bold text-white" {...props} />
+                        ),
+                        p: ({ node, ...props }) => (
+                          <p className="my-2 leading-relaxed text-gray-300" {...props} />
+                        ),
+                        code: ({ node, ...props }) => (
+                          <code className="bg-gray-700/50 px-1.5 py-0.5 rounded text-sm font-mono text-blue-300" {...props} />
+                        ),
+                      }}
+                    >
+                      {streamingContent}
+                    </ReactMarkdown>
                   </div>
                 </div>
               </div>
             )}
 
-            {isStreaming && !streamingContent && (
+            {/* Initial loading state */}
+            {isStreaming && !streamingContent && progressSteps.length === 0 && (
               <div className="flex justify-start">
-                <div className="bg-gray-800/80 backdrop-blur-sm text-gray-100 rounded-2xl px-5 py-3 shadow-lg border border-gray-700/40">
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                <div className="bg-gray-800/80 backdrop-blur-sm rounded-2xl px-5 py-3 border border-gray-700/40 animate-pulse">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+                    <span className="text-sm text-gray-400">AI is thinking...</span>
+                  </div>
                 </div>
               </div>
             )}
