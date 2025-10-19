@@ -26,8 +26,13 @@ import { ProjectManagement } from "./components/ProjectManagement";
 import { RevenueByClientReport } from "./components/RevenueByClientReport";
 import { ExpensesByVendorReport } from "./components/ExpensesByVendorReport";
 import { ProjectProfitabilityReport } from "./components/ProjectProfitabilityReport";
+import { JournalList } from "./components/JournalList";
+import { JournalDetail } from "./components/JournalDetail";
+import { GeneralLedger } from "./components/GeneralLedger";
+import { CompanySettings } from "./components/CompanySettings";
+import { TaxReports } from "./components/TaxReports";
 import NotFound from "./pages/NotFound";
-import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp, Lock, Camera, PieChart, Users, Building2, FolderKanban } from "lucide-react";
+import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp, Lock, Camera, PieChart, Users, Building2, FolderKanban, List, FileCheck, Settings, FileSpreadsheet } from "lucide-react";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +63,13 @@ const App = () => (
               >
                 <BookOpen className="h-4 w-4" />
                 Chart of Accounts
+              </Link>
+              <Link 
+                to="/journals" 
+                className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+              >
+                <List className="h-4 w-4" />
+                Journal List
               </Link>
               <Link 
                 to="/journals/new" 
@@ -229,6 +241,31 @@ const App = () => (
                   <BarChart3 className="h-4 w-4" />
                   Project Profitability
                 </Link>
+                <Link 
+                  to="/reports/general-ledger" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <FileCheck className="h-4 w-4" />
+                  General Ledger
+                </Link>
+                <Link 
+                  to="/reports/tax" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Tax Reports
+                </Link>
+              </div>
+              
+              <div className="pt-4 mt-4 border-t border-sidebar-border">
+                <div className="text-xs text-sidebar-foreground/60 px-4 mb-2 font-semibold">SETTINGS</div>
+                <Link 
+                  to="/settings" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <Settings className="h-4 w-4" />
+                  Company Settings
+                </Link>
               </div>
             </nav>
           </div>
@@ -238,6 +275,8 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/accounts" element={<COATable />} />
+              <Route path="/journals" element={<JournalList />} />
+              <Route path="/journals/:id" element={<JournalDetail />} />
               <Route path="/journals/new" element={<JournalForm />} />
               <Route path="/invoices/new" element={<InvoiceForm />} />
               <Route path="/receipts/new" element={<ReceiptForm />} />
@@ -259,6 +298,9 @@ const App = () => (
               <Route path="/reports/revenue-by-client" element={<RevenueByClientReport />} />
               <Route path="/reports/expenses-by-vendor" element={<ExpensesByVendorReport />} />
               <Route path="/reports/project-profitability" element={<ProjectProfitabilityReport />} />
+              <Route path="/reports/general-ledger" element={<GeneralLedger />} />
+              <Route path="/reports/tax" element={<TaxReports />} />
+              <Route path="/settings" element={<CompanySettings />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
