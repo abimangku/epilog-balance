@@ -4,16 +4,23 @@ import { supabase } from '@/integrations/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, ArrowLeft } from 'lucide-react'
+import { Loader2, ArrowLeft, XCircle } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
-import { useUpdateInvoiceStatus } from '@/hooks/useInvoices'
+import { useUpdateInvoiceStatus, useVoidInvoice } from '@/hooks/useInvoices'
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
+import { useState } from 'react'
 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>()
   const updateStatus = useUpdateInvoiceStatus()
+  const voidInvoice = useVoidInvoice()
   const { toast } = useToast()
+  const [voidReason, setVoidReason] = useState('')
+  const [showVoidDialog, setShowVoidDialog] = useState(false)
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ['invoice', id],
@@ -63,6 +70,33 @@ export default function InvoiceDetail() {
   const totalPaid = receipts?.reduce((sum, r) => sum + r.amount, 0) || 0
   const balance = invoice.total - totalPaid
 
+  const handleVoidInvoice = async () => {
+    if (!voidReason.trim()) {
+      toast({ 
+        title: 'Reason Required', 
+        description: 'Please provide a reason for voiding this invoice',
+        variant: 'destructive' 
+      })
+      return
+    }
+
+    try {
+      await voidInvoice.mutateAsync({ invoiceId: invoice.id, reason: voidReason })
+      toast({ 
+        title: 'Invoice Voided', 
+        description: 'Invoice has been voided and reversal journal created' 
+      })
+      setShowVoidDialog(false)
+      setVoidReason('')
+    } catch (error) {
+      toast({ 
+        title: 'Error', 
+        description: error instanceof Error ? error.message : 'Failed to void invoice',
+        variant: 'destructive' 
+      })
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-6">
@@ -74,13 +108,18 @@ export default function InvoiceDetail() {
             </Button>
           </Link>
           <h1 className="text-3xl font-bold">Invoice {invoice.number}</h1>
-          <Badge variant={
-            invoice.status === 'PAID' ? 'default' :
-            invoice.status === 'PARTIAL' ? 'secondary' :
-            invoice.status === 'OVERDUE' ? 'destructive' : 'outline'
-          }>
-            {invoice.status}
-          </Badge>
+          <div className="flex gap-2">
+            {invoice.voided_at && (
+              <Badge variant="destructive">VOIDED</Badge>
+            )}
+            <Badge variant={
+              invoice.status === 'PAID' ? 'default' :
+              invoice.status === 'PARTIAL' ? 'secondary' :
+              invoice.status === 'OVERDUE' ? 'destructive' : 'outline'
+            }>
+              {invoice.status}
+            </Badge>
+          </div>
         </div>
         <div className="flex gap-2">
           {invoice.status === 'DRAFT' && (
@@ -120,6 +159,49 @@ export default function InvoiceDetail() {
             }}>
               Mark as Paid
             </Button>
+          )}
+
+          {!invoice.voided_at && invoice.status !== 'DRAFT' && (
+            <Dialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
+              <DialogTrigger asChild>
+                <Button variant="destructive">
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Void Invoice
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Void Invoice</DialogTitle>
+                  <DialogDescription>
+                    This will void the invoice and create a reversal journal entry. Please provide a reason.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="reason">Reason for voiding *</Label>
+                    <Textarea
+                      id="reason"
+                      placeholder="Enter reason for voiding this invoice..."
+                      value={voidReason}
+                      onChange={(e) => setVoidReason(e.target.value)}
+                      rows={4}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowVoidDialog(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleVoidInvoice}
+                    disabled={!voidReason.trim() || voidInvoice.isPending}
+                  >
+                    {voidInvoice.isPending ? 'Voiding...' : 'Void Invoice'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           )}
         </div>
       </div>

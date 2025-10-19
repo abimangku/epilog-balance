@@ -108,6 +108,25 @@ export function useUpdateInvoiceStatus() {
   })
 }
 
+export function useVoidInvoice() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ invoiceId, reason }: { invoiceId: string; reason: string }) => {
+      const { data, error } = await supabase.functions.invoke('void-invoice', {
+        body: { invoiceId, reason }
+      })
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['invoice'] })
+    },
+  })
+}
+
 export function useARAgingReport() {
   return useQuery({
     queryKey: ['ar-aging'],

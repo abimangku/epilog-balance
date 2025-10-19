@@ -185,6 +185,42 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          action: string
+          changed_at: string | null
+          changed_by: string | null
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          reason: string | null
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          action: string
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          reason?: string | null
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          action?: string
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          reason?: string | null
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       bank_account: {
         Row: {
           account_code: string
@@ -905,12 +941,16 @@ export type Database = {
           journal_id: string | null
           number: string
           project_id: string | null
+          reversal_journal_id: string | null
           status: string | null
           subtotal: number
           total: number
           unbilled_revenue_recognized: number | null
           updated_at: string | null
           vat_amount: number
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           client_id: string
@@ -924,12 +964,16 @@ export type Database = {
           journal_id?: string | null
           number: string
           project_id?: string | null
+          reversal_journal_id?: string | null
           status?: string | null
           subtotal: number
           total: number
           unbilled_revenue_recognized?: number | null
           updated_at?: string | null
           vat_amount: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           client_id?: string
@@ -943,12 +987,16 @@ export type Database = {
           journal_id?: string | null
           number?: string
           project_id?: string | null
+          reversal_journal_id?: string | null
           status?: string | null
           subtotal?: number
           total?: number
           unbilled_revenue_recognized?: number | null
           updated_at?: string | null
           vat_amount?: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
@@ -970,6 +1018,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "project"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_invoice_reversal_journal_id_fkey"
+            columns: ["reversal_journal_id"]
+            isOneToOne: false
+            referencedRelation: "journal"
             referencedColumns: ["id"]
           },
         ]
@@ -1315,6 +1370,7 @@ export type Database = {
           journal_id: string | null
           number: string
           project_id: string | null
+          reversal_journal_id: string | null
           status: string
           subtotal: number
           total: number
@@ -1322,6 +1378,9 @@ export type Database = {
           vat_amount: number
           vendor_id: string
           vendor_invoice_number: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           category: string
@@ -1335,6 +1394,7 @@ export type Database = {
           journal_id?: string | null
           number: string
           project_id?: string | null
+          reversal_journal_id?: string | null
           status?: string
           subtotal: number
           total: number
@@ -1342,6 +1402,9 @@ export type Database = {
           vat_amount?: number
           vendor_id: string
           vendor_invoice_number?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           category?: string
@@ -1355,6 +1418,7 @@ export type Database = {
           journal_id?: string | null
           number?: string
           project_id?: string | null
+          reversal_journal_id?: string | null
           status?: string
           subtotal?: number
           total?: number
@@ -1362,6 +1426,9 @@ export type Database = {
           vat_amount?: number
           vendor_id?: string
           vendor_invoice_number?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
@@ -1376,6 +1443,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "project"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_bill_reversal_journal_id_fkey"
+            columns: ["reversal_journal_id"]
+            isOneToOne: false
+            referencedRelation: "journal"
             referencedColumns: ["id"]
           },
           {

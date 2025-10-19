@@ -102,3 +102,22 @@ export function useUpdateBillStatus() {
     },
   })
 }
+
+export function useVoidBill() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ billId, reason }: { billId: string; reason: string }) => {
+      const { data, error } = await supabase.functions.invoke('void-bill', {
+        body: { billId, reason }
+      })
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bills'] })
+      queryClient.invalidateQueries({ queryKey: ['bill'] })
+    },
+  })
+}

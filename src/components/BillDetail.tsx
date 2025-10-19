@@ -1,19 +1,26 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { useBill, useUpdateBillStatus } from '@/hooks/useBills'
+import { useBill, useUpdateBillStatus, useVoidBill } from '@/hooks/useBills'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, Building, Calendar } from 'lucide-react'
+import { ArrowLeft, Building, Calendar, XCircle } from 'lucide-react'
+import { useState } from 'react'
 
 export function BillDetail() {
   const { id } = useParams<{ id: string }>()
   const { data: bill, isLoading } = useBill(id!)
   const updateStatus = useUpdateBillStatus()
+  const voidBill = useVoidBill()
   const navigate = useNavigate()
   const { toast } = useToast()
+  const [voidReason, setVoidReason] = useState('')
+  const [showVoidDialog, setShowVoidDialog] = useState(false)
 
   if (isLoading) return <div className="p-6">Loading bill...</div>
   if (!bill) return <div className="p-6">Bill not found</div>
@@ -65,6 +72,33 @@ export function BillDetail() {
     }
   }
 
+  const handleVoidBill = async () => {
+    if (!voidReason.trim()) {
+      toast({ 
+        title: 'Reason Required', 
+        description: 'Please provide a reason for voiding this bill',
+        variant: 'destructive' 
+      })
+      return
+    }
+
+    try {
+      await voidBill.mutateAsync({ billId: bill.id, reason: voidReason })
+      toast({ 
+        title: 'Bill Voided', 
+        description: 'Bill has been voided and reversal journal created' 
+      })
+      setShowVoidDialog(false)
+      setVoidReason('')
+    } catch (error) {
+      toast({ 
+        title: 'Error', 
+        description: error instanceof Error ? error.message : 'Failed to void bill',
+        variant: 'destructive' 
+      })
+    }
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -110,6 +144,49 @@ export function BillDetail() {
               <Button>Pay Vendor</Button>
             </Link>
           )}
+
+          {!bill.voided_at && bill.status !== 'DRAFT' && (
+            <Dialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
+              <DialogTrigger asChild>
+                <Button variant="destructive">
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Void Bill
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Void Bill</DialogTitle>
+                  <DialogDescription>
+                    This will void the bill and create a reversal journal entry. Please provide a reason.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="reason">Reason for voiding *</Label>
+                    <Textarea
+                      id="reason"
+                      placeholder="Enter reason for voiding this bill..."
+                      value={voidReason}
+                      onChange={(e) => setVoidReason(e.target.value)}
+                      rows={4}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowVoidDialog(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    onClick={handleVoidBill}
+                    disabled={!voidReason.trim() || voidBill.isPending}
+                  >
+                    {voidBill.isPending ? 'Voiding...' : 'Void Bill'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
@@ -118,7 +195,12 @@ export function BillDetail() {
         <CardHeader>
           <div className="flex justify-between items-start">
             <CardTitle>Bill Information</CardTitle>
-            <Badge className={statusColors[bill.status]}>{bill.status}</Badge>
+            <div className="flex gap-2">
+              {bill.voided_at && (
+                <Badge variant="destructive">VOIDED</Badge>
+              )}
+              <Badge className={statusColors[bill.status]}>{bill.status}</Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
