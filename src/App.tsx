@@ -17,8 +17,11 @@ import { PaymentForm } from "./components/PaymentForm";
 import { APAgingReport } from "./components/APAgingReport";
 import { PeriodClose } from "./components/PeriodClose";
 import { SnapshotViewer } from "./components/SnapshotViewer";
+import { ProfitLossReport } from "./components/ProfitLossReport";
+import { BalanceSheetReport } from "./components/BalanceSheetReport";
+import { TrialBalanceReport } from "./components/TrialBalanceReport";
 import NotFound from "./pages/NotFound";
-import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp, Lock, Camera } from "lucide-react";
+import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp, Lock, Camera, PieChart } from "lucide-react";
 
 const queryClient = new QueryClient();
 
@@ -150,6 +153,31 @@ const App = () => (
                   Snapshots
                 </Link>
               </div>
+              
+              <div className="pt-4 mt-4 border-t border-sidebar-border">
+                <div className="text-xs text-sidebar-foreground/60 px-4 mb-2 font-semibold">REPORTS</div>
+                <Link 
+                  to="/reports/profit-loss" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <PieChart className="h-4 w-4" />
+                  Profit & Loss
+                </Link>
+                <Link 
+                  to="/reports/balance-sheet" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Balance Sheet
+                </Link>
+                <Link 
+                  to="/reports/trial-balance" 
+                  className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                >
+                  <FileStack className="h-4 w-4" />
+                  Trial Balance
+                </Link>
+              </div>
             </nav>
           </div>
 
@@ -170,6 +198,9 @@ const App = () => (
               <Route path="/reports/ap-aging" element={<APAgingReport />} />
               <Route path="/period-close" element={<PeriodClose />} />
               <Route path="/snapshots" element={<SnapshotViewer />} />
+              <Route path="/reports/profit-loss" element={<ProfitLossReport />} />
+              <Route path="/reports/balance-sheet" element={<BalanceSheetReport />} />
+              <Route path="/reports/trial-balance" element={<TrialBalanceReport />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
