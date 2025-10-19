@@ -55,16 +55,31 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) throw new Error('Unauthorized');
 
-    // Find vendor by name
-    const { data: vendor } = await supabase
+    // Find or create vendor
+    let vendor;
+    const { data: existingVendor } = await supabase
       .from('vendor')
       .select('*')
-      .or(`name.ilike.%${suggestionData.vendor_name}%,code.eq.${suggestionData.vendor_code}`)
+      .or(`name.ilike.%${suggestionData.vendor_name}%${suggestionData.vendor_code ? `,code.eq.${suggestionData.vendor_code}` : ''}`)
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    if (!vendor) {
-      throw new Error(`Vendor "${suggestionData.vendor_name}" not found. Please create the vendor first.`);
+    if (existingVendor) {
+      vendor = existingVendor;
+    } else {
+      // Create new vendor
+      const { data: newVendor, error: createError } = await supabase
+        .from('vendor')
+        .insert({
+          name: suggestionData.vendor_name,
+          code: suggestionData.vendor_code || suggestionData.vendor_name.substring(0, 10).toUpperCase().replace(/\s+/g, '-'),
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+      vendor = newVendor;
     }
 
     // Find project if specified

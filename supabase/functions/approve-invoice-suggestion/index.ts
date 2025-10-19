@@ -55,16 +55,31 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) throw new Error('Unauthorized');
 
-    // Find client by name
-    const { data: client } = await supabase
+    // Find or create client
+    let client;
+    const { data: existingClient } = await supabase
       .from('client')
       .select('*')
-      .or(`name.ilike.%${suggestionData.client_name}%,code.eq.${suggestionData.client_code}`)
+      .or(`name.ilike.%${suggestionData.client_name}%${suggestionData.client_code ? `,code.eq.${suggestionData.client_code}` : ''}`)
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    if (!client) {
-      throw new Error(`Client "${suggestionData.client_name}" not found. Please create the client first.`);
+    if (existingClient) {
+      client = existingClient;
+    } else {
+      // Create new client
+      const { data: newClient, error: createError } = await supabase
+        .from('client')
+        .insert({
+          name: suggestionData.client_name,
+          code: suggestionData.client_code || suggestionData.client_name.substring(0, 10).toUpperCase().replace(/\s+/g, '-'),
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+      client = newClient;
     }
 
     // Find project if specified
