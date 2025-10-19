@@ -105,6 +105,9 @@ serve(async (req) => {
           unitPrice: line.unit_price,
           amount: line.amount
         }))
+      },
+      headers: {
+        Authorization: authHeader
       }
     });
 

@@ -105,6 +105,9 @@ serve(async (req) => {
           amount: line.amount,
           projectId: line.project_id || projectId
         }))
+      },
+      headers: {
+        Authorization: authHeader
       }
     });
 

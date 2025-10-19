@@ -63,6 +63,9 @@ serve(async (req) => {
         date: suggestionData.date,
         amount: suggestionData.amount,
         bankAccountCode: suggestionData.bank_account_code
+      },
+      headers: {
+        Authorization: authHeader
       }
     });
 
