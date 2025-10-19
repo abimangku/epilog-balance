@@ -14,8 +14,8 @@ const invoiceSuggestionSchema = z.object({
     description: z.string().min(1).max(500),
     revenue_account_code: z.string().regex(/^\d-\d{5}$/),
     quantity: z.number().positive(),
-    unit_price: z.number().int().min(0),
-    amount: z.number().int().positive(),
+    unit_price: z.number().positive(),
+    amount: z.number().positive(),
     project_id: z.string().uuid().optional()
   })).min(1).max(100)
 });
