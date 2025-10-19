@@ -15,7 +15,7 @@ export function TransactionsList() {
   const [endDate, setEndDate] = useState('')
   const [type, setType] = useState('all')
   const [status, setStatus] = useState('all')
-  const [aiFilter, setAiFilter] = useState('')
+  const [aiFilter, setAiFilter] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
 
   const { data: transactions, isLoading } = useTransactions({
@@ -154,7 +154,7 @@ export function TransactionsList() {
                 <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All</SelectItem>
+                <SelectItem value="all">All</SelectItem>
                 <SelectItem value="ai">🤖 AI Created</SelectItem>
                 <SelectItem value="manual">Manual</SelectItem>
               </SelectContent>
