@@ -406,9 +406,10 @@ function InvoicePreview({ data }: { data: InvoiceSuggestion }) {
 }
 
 function JournalPreview({ data }: { data: JournalSuggestion }) {
-  const totalDebit = data.lines.reduce((sum, line) => sum + line.debit, 0);
-  const totalCredit = data.lines.reduce((sum, line) => sum + line.credit, 0);
-  const isBalanced = totalDebit === totalCredit;
+  const totalDebit = data.lines.reduce((sum, line) => sum + (line.debit || 0), 0);
+  const totalCredit = data.lines.reduce((sum, line) => sum + (line.credit || 0), 0);
+  const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
+  const difference = Math.abs(totalDebit - totalCredit);
 
   return (
     <div className="space-y-3 text-sm">
@@ -440,8 +441,8 @@ function JournalPreview({ data }: { data: JournalSuggestion }) {
                 <p className="text-xs text-muted-foreground">{line.description}</p>
               )}
               <div className="flex gap-4 text-xs mt-1">
-                <span>Debit: {formatCurrency(line.debit)}</span>
-                <span>Credit: {formatCurrency(line.credit)}</span>
+                <span>Debit: {formatCurrency(line.debit || 0)}</span>
+                <span>Credit: {formatCurrency(line.credit || 0)}</span>
               </div>
             </div>
           ))}
@@ -452,17 +453,29 @@ function JournalPreview({ data }: { data: JournalSuggestion }) {
 
       <div className="space-y-1">
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Total Debit:</span>
+          <span className="font-medium">Total Debit:</span>
           <span className="font-medium">{formatCurrency(totalDebit)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Total Credit:</span>
+          <span className="font-medium">Total Credit:</span>
           <span className="font-medium">{formatCurrency(totalCredit)}</span>
         </div>
-        {!isBalanced && (
-          <p className="text-sm text-destructive font-medium">⚠️ Journal is not balanced!</p>
-        )}
       </div>
+
+      {!isBalanced && (
+        <div className="mt-3 p-3 bg-destructive/10 border border-destructive rounded-md">
+          <p className="text-sm text-destructive font-semibold flex items-center gap-2">
+            <span>⚠️</span>
+            <span>Journal is not balanced!</span>
+          </p>
+          <p className="text-xs text-destructive/80 mt-1">
+            Difference: {formatCurrency(difference)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Debits: {formatCurrency(totalDebit)} | Credits: {formatCurrency(totalCredit)}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

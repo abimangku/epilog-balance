@@ -132,21 +132,38 @@ export function AIAssistant() {
             if (toolCalls && toolCalls.length > 0) {
               const toolCall = toolCalls[0];
               if (toolCall.function?.name && toolCall.function?.arguments) {
-                const funcName = toolCall.function.name;
-                const args = JSON.parse(toolCall.function.arguments);
-                
-                if (funcName === 'suggest_bill') {
-                  suggestionType = 'bill';
-                  suggestionData = { ...args, due_date: args.date };
-                } else if (funcName === 'suggest_invoice') {
-                  suggestionType = 'invoice';
-                  suggestionData = { ...args, due_date: args.date };
-                } else if (funcName === 'suggest_journal') {
-                  suggestionType = 'journal';
-                  suggestionData = args;
-                } else if (funcName === 'suggest_payment') {
-                  suggestionType = 'payment';
-                  suggestionData = args;
+                try {
+                  const funcName = toolCall.function.name;
+                  const args = JSON.parse(toolCall.function.arguments);
+                  
+                  // Validate journal entries are balanced
+                  if (funcName === 'suggest_journal') {
+                    const totalDebit = args.lines.reduce((sum: number, l: any) => sum + (l.debit || 0), 0);
+                    const totalCredit = args.lines.reduce((sum: number, l: any) => sum + (l.credit || 0), 0);
+                    
+                    if (Math.abs(totalDebit - totalCredit) > 0.01) {
+                      console.error('Unbalanced journal detected:', { totalDebit, totalCredit, args });
+                      // Don't store unbalanced suggestions
+                      continue;
+                    }
+                  }
+                  
+                  // Store suggestion data
+                  if (funcName === 'suggest_bill') {
+                    suggestionType = 'bill';
+                    suggestionData = { ...args, due_date: args.date };
+                  } else if (funcName === 'suggest_invoice') {
+                    suggestionType = 'invoice';
+                    suggestionData = { ...args, due_date: args.date };
+                  } else if (funcName === 'suggest_journal') {
+                    suggestionType = 'journal';
+                    suggestionData = args;
+                  } else if (funcName === 'suggest_payment') {
+                    suggestionType = 'payment';
+                    suggestionData = args;
+                  }
+                } catch (e) {
+                  console.error('Tool call parsing error:', e, toolCall.function.arguments);
                 }
               }
             }

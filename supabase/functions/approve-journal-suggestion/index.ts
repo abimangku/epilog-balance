@@ -29,11 +29,26 @@ serve(async (req) => {
     const { data: nextNum } = await supabase.rpc('get_next_journal_number');
 
     // Validate journal is balanced
-    const totalDebit = suggestionData.lines.reduce((sum: number, line: any) => sum + line.debit, 0);
-    const totalCredit = suggestionData.lines.reduce((sum: number, line: any) => sum + line.credit, 0);
+    const totalDebit = suggestionData.lines.reduce((sum: number, line: any) => sum + (line.debit || 0), 0);
+    const totalCredit = suggestionData.lines.reduce((sum: number, line: any) => sum + (line.credit || 0), 0);
     
-    if (totalDebit !== totalCredit) {
-      throw new Error(`Journal is not balanced. Debit: ${totalDebit}, Credit: ${totalCredit}`);
+    if (Math.abs(totalDebit - totalCredit) > 0.01) {
+      throw new Error(
+        `Journal is not balanced. Debit: ${totalDebit}, Credit: ${totalCredit}, Difference: ${Math.abs(totalDebit - totalCredit)}`
+      );
+    }
+
+    // Validate account codes exist
+    for (const line of suggestionData.lines) {
+      const { data: account, error: accountError } = await supabase
+        .from('account')
+        .select('code')
+        .eq('code', line.account_code)
+        .single();
+      
+      if (accountError || !account) {
+        throw new Error(`Invalid account code: ${line.account_code}. Please use valid account codes from the chart of accounts.`);
+      }
     }
 
     // Create journal entry

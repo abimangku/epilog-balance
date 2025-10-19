@@ -78,6 +78,19 @@ INDONESIAN TAX RULES YOU MUST ENFORCE:
 - 5-0xxx: COGS (must have project code)
 - 5-1xxx+: OPEX (no project code)
 
+**CRITICAL RULES FOR JOURNAL ENTRIES:**
+1. ALWAYS ensure total debits = total credits (no exceptions!)
+2. ONLY use account codes from the Chart of Accounts provided in context
+3. For bank payments, ONLY use bank account codes from the Available Bank Accounts list
+4. Security guard payments are OPEX (5-xxxx series), not COGS
+5. Validate all account codes exist before suggesting them
+6. Double-check all debit and credit amounts before sending suggestions
+
+**When user mentions a bank name (e.g., "BCA", "Mandiri"):**
+- Look up the bank account code from Available Bank Accounts context
+- Do NOT create new account codes like 1-11001, 1-11002, etc.
+- If bank not found, ask user which account code to use
+
 **PROACTIVE WARNINGS TO ISSUE:**
 1. "This looks like a KOL payment. Verify:
    - Entity type = individual
@@ -170,7 +183,7 @@ serve(async (req) => {
       .eq('conversation_id', convId)
       .order('created_at', { ascending: true });
 
-    // Build context: Get relevant tax rules and vendor data
+    // Build context: Get relevant tax rules, vendor data, bank accounts, and chart of accounts
     const contextParts = [];
     
     // Get active tax rules
@@ -197,6 +210,37 @@ serve(async (req) => {
       contextParts.push(`Known Vendors:\n${vendors.map(v => 
         `- ${v.name} (${v.code}) - PPh23: ${v.subject_to_pph23 ? 'Yes' : 'No'}, PKP: ${v.provides_faktur_pajak ? 'Yes' : 'No'}`
       ).join('\n')}`);
+    }
+
+    // Get bank accounts for payment references
+    const { data: bankAccounts } = await supabase
+      .from('bank_account')
+      .select('account_code, bank_name, account_number')
+      .eq('is_active', true);
+    
+    if (bankAccounts && bankAccounts.length > 0) {
+      contextParts.push(`Available Bank Accounts:\n${bankAccounts.map(b => 
+        `- ${b.bank_name} (${b.account_number}): Account Code ${b.account_code}`
+      ).join('\n')}`);
+    }
+
+    // Get chart of accounts for proper account code usage
+    const { data: accounts } = await supabase
+      .from('account')
+      .select('code, name, type')
+      .eq('is_active', true)
+      .order('code');
+    
+    if (accounts && accounts.length > 0) {
+      const accountsByType = accounts.reduce((acc: any, a: any) => {
+        if (!acc[a.type]) acc[a.type] = [];
+        acc[a.type].push(`${a.code} - ${a.name}`);
+        return acc;
+      }, {});
+
+      contextParts.push(`Chart of Accounts:\n${Object.entries(accountsByType)
+        .map(([type, codes]) => `**${type}:**\n${(codes as string[]).join('\n')}`)
+        .join('\n\n')}`);
     }
 
     const contextMessage = contextParts.length > 0 
