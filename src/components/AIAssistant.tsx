@@ -156,33 +156,37 @@ export function AIAssistant() {
                         description: entityData.message,
                       });
                       
-                      // Insert action card into chat
+                      // Insert action card into chat with success message
                       const actionData: any = {};
+                      let actionMessage = '';
+                      
                       if (funcName === 'create_vendor') {
                         actionData.vendor_name = entityData.vendor.name;
                         actionData.vendor_code = entityData.vendor.code;
                         actionData.tax_id = entityData.vendor.tax_id;
                         actionData.provides_faktur_pajak = entityData.vendor.provides_faktur_pajak;
                         actionData.subject_to_pph23 = entityData.vendor.subject_to_pph23;
+                        actionMessage = `✅ Vendor **${entityData.vendor.name}** (${entityData.vendor.code}) created successfully!`;
                       } else if (funcName === 'create_client') {
                         actionData.client_name = entityData.client.name;
                         actionData.client_code = entityData.client.code;
                         actionData.tax_id = entityData.client.tax_id;
                         actionData.withholds_pph23 = entityData.client.withholds_pph23;
+                        actionMessage = `✅ Client **${entityData.client.name}** (${entityData.client.code}) created successfully!`;
                       } else if (funcName === 'create_project') {
                         actionData.project_name = entityData.project.name;
                         actionData.project_code = entityData.project.code;
                         actionData.client_name = args.clientName;
+                        actionMessage = `✅ Project **${entityData.project.name}** (${entityData.project.code}) created successfully!`;
                       }
                       
                       await supabase.from('conversation_message').insert({
                         conversation_id: selectedConversation,
                         role: 'assistant',
-                        content: '',
+                        content: actionMessage,
                         metadata: {
                           action_type: `${funcName.split('_')[1]}_created`,
-                          action_data: actionData,
-                          timestamp: new Date().toISOString()
+                          action_data: actionData
                         }
                       });
                     } else {
@@ -382,11 +386,26 @@ export function AIAssistant() {
         throw new Error(data.error || 'Failed to approve suggestion');
       }
 
-      toast.success('Success', {
-        description: `${suggestionType.charAt(0).toUpperCase() + suggestionType.slice(1)} created successfully`
+      // Enhanced success feedback with detailed information
+      const entityInfo = data.invoice || data.bill || data.payment || data.journal;
+      const entityNumber = entityInfo?.number || '';
+      const entityTotal = entityInfo?.total || data.payment?.amount || 0;
+      
+      // Show success toast with action button
+      toast.success(`${suggestionType.charAt(0).toUpperCase() + suggestionType.slice(1)} Created!`, {
+        description: entityNumber 
+          ? `${entityNumber} - Rp ${entityTotal.toLocaleString('id-ID')} has been recorded successfully.`
+          : `${suggestionType.charAt(0).toUpperCase() + suggestionType.slice(1)} has been created successfully.`,
+        duration: 6000,
+        action: suggestionType === 'invoice' || suggestionType === 'bill' 
+          ? {
+              label: 'View',
+              onClick: () => window.location.href = `/${suggestionType}s`
+            }
+          : undefined
       });
 
-      // Refresh messages
+      // Refresh messages to show AI follow-up with action card
       sendMessage.mutate({ conversationId: selectedConversation, message: '', attachments: [] });
     } catch (error) {
       console.error('Approval error:', error);
@@ -507,10 +526,15 @@ export function AIAssistant() {
             >
               {msg.role === 'assistant' && msg.metadata?.action_type ? (
                 <div className="max-w-[80%]">
+                  <div className="mb-2 rounded-lg p-4 bg-muted">
+                    <div className="prose prose-sm max-w-none">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
+                  </div>
                   <AIActionCard
                     actionType={msg.metadata.action_type}
                     entityData={msg.metadata.action_data}
-                    timestamp={msg.metadata.timestamp}
+                    timestamp={msg.created_at}
                   />
                 </div>
               ) : msg.role === 'assistant' && msg.metadata?.suggestion_type ? (

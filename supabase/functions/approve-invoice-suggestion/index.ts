@@ -78,15 +78,17 @@ serve(async (req) => {
 
     // Find project if specified
     let projectId = null;
+    let project = null;
     if (suggestionData.project_name) {
-      const { data: project } = await supabase
+      const { data: projectData } = await supabase
         .from('project')
-        .select('id')
+        .select('id, name')
         .ilike('name', `%${suggestionData.project_name}%`)
         .limit(1)
         .single();
       
-      projectId = project?.id;
+      projectId = projectData?.id;
+      project = projectData;
     }
 
     // Call create-invoice edge function
@@ -175,11 +177,21 @@ serve(async (req) => {
       approved_at: new Date().toISOString()
     });
 
-    // Send follow-up message
+    // Send follow-up message with action card metadata
     await supabase.from('conversation_message').insert({
       conversation_id: conversationId,
       role: 'assistant',
-      content: `✅ Invoice **${invoiceData.invoice.number}** created successfully!\n\n- Client: ${client.name}\n- Total: Rp ${suggestionData.total.toLocaleString()}\n- Journal: ${invoiceData.journal.number}`
+      content: `✅ Invoice **${invoiceData.invoice.number}** created successfully!\n\n- Client: ${client.name}\n- Total: Rp ${suggestionData.total.toLocaleString('id-ID')}\n- Journal: ${invoiceData.journal.number}`,
+      metadata: {
+        action_type: 'invoice_created',
+        action_data: {
+          invoice_number: invoiceData.invoice.number,
+          client_name: client.name,
+          total: suggestionData.total,
+          project_name: project ? project.name : null,
+          journal_number: invoiceData.journal.number
+        }
+      }
     });
 
     return new Response(

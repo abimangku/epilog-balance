@@ -125,12 +125,23 @@ serve(async (req) => {
       approved_at: new Date().toISOString()
     });
 
-    // Send follow-up message
-    const netPayment = suggestionData.amount - suggestionData.pph23_withheld;
+    // Send follow-up message with action card metadata
+    const netPayment = suggestionData.amount - (suggestionData.pph23_withheld || 0);
     await supabase.from('conversation_message').insert({
       conversation_id: conversationId,
       role: 'assistant',
-      content: `✅ Payment **${paymentData.payment.number}** created successfully!\n\n- Bill: ${suggestionData.bill_number}\n- Gross Amount: Rp ${suggestionData.amount.toLocaleString()}\n- PPh 23 Withheld: Rp ${suggestionData.pph23_withheld.toLocaleString()}\n- Net Payment: Rp ${netPayment.toLocaleString()}\n- Journal: ${paymentData.journal.number}`
+      content: `✅ Payment **${paymentData.payment.number}** created successfully!\n\n- Bill: ${suggestionData.bill_number}\n- Gross Amount: Rp ${suggestionData.amount.toLocaleString('id-ID')}\n- PPh 23 Withheld: Rp ${(suggestionData.pph23_withheld || 0).toLocaleString('id-ID')}\n- Net Payment: Rp ${netPayment.toLocaleString('id-ID')}\n- Journal: ${paymentData.journal.number}`,
+      metadata: {
+        action_type: 'payment_created',
+        action_data: {
+          payment_number: paymentData.payment.number,
+          bill_number: suggestionData.bill_number,
+          vendor_name: bill.vendor_name || 'Vendor',
+          amount: suggestionData.amount,
+          pph23_withheld: suggestionData.pph23_withheld || 0,
+          journal_number: paymentData.journal.number
+        }
+      }
     });
 
     return new Response(
