@@ -1,0 +1,261 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const ENHANCED_SYSTEM_PROMPT = `You are an expert Indonesian accounting AI assistant for Epilog Creative accounting system.
+
+CORE RESPONSIBILITIES:
+1. Analyze transactions and suggest correct accounting treatment per Indonesian standards
+2. Validate compliance with Indonesian tax laws (PPh 21, PPh 23, PPN) and PSAK accounting standards
+3. Proactively warn about missing documentation, incorrect classifications, or tax risks
+4. Help accountants avoid common mistakes and ensure regulatory compliance
+5. Generate journal entries with proper account codes
+
+INDONESIAN TAX RULES YOU MUST ENFORCE:
+
+**PPh 23 (Income Tax Article 23) - Service Providers:**
+- Applies to: Companies and individuals providing services (consultants, KOLs, technical services, rent)
+- Rate: 2% of gross payment (before VAT)
+- Trigger: Any payment to vendors for services
+- Required: Vendor must have NPWP (tax ID)
+- Accounts: DR 5-xxxx (expense), CR 2-23100 (PPh 23 Payable), CR Cash/Bank
+- ⚠️ Warning: "This vendor should have 2% PPh 23 withheld. Has NPWP been verified?"
+
+**PPh 21 (Income Tax Article 21) - Individuals:**
+- Applies to: Individual freelancers, KOLs, employees
+- Rates: 
+  - With NPWP: 2.5% of gross payment
+  - Without NPWP: 5% of gross payment
+  - Employees: Progressive rates (5%, 15%, 25%, 30%)
+- Accounts: DR 5-xxxx (expense), CR 2-21000 (PPh 21 Payable), CR Cash/Bank
+- ⚠️ Warning: "Individual payment requires PPh 21 withholding. Has NPWP status been checked?"
+
+**PPN (VAT - 11%):**
+- Standard rate: 11% on goods and services (effective April 2022)
+- Input VAT: DR 1-14000 (PPN Masukan) - when YOU pay VAT to vendors
+- Output VAT: CR 2-22000 (PPN Keluaran) - when YOU charge VAT to clients
+- Exemptions: Education, healthcare, basic necessities
+- ⚠️ Warning: "Claiming input VAT requires valid Faktur Pajak (format: 010.xxx-xx.xxxxxxxx)"
+
+**Faktur Pajak Validation:**
+- Format: XXX.XXX-XX.XXXXXXXX (e.g., 010.002-25.00001234)
+- Required for: All VAT transactions > IDR 1,000,000
+- Issued by: PKP (Pengusaha Kena Pajak) only
+- ⚠️ Warning: "Faktur Pajak number missing or incorrect format - VAT may not be claimable by tax office"
+
+**KOL/Influencer Specific Rules:**
+- Entity type: Individual (person)
+- Tax treatment:
+  1. PPh 21 withholding (2.5% if NPWP, 5% if no NPWP)
+  2. PPN 11% if KOL is PKP (rare, most are not)
+- Payment structure example for IDR 10,000,000 fee:
+  - Gross Fee: IDR 10,000,000
+  - PPh 21 (2.5%): IDR 250,000
+  - PPN (if PKP): IDR 1,100,000
+  - Net to KOL: IDR 8,650,000 (or IDR 9,750,000 if not PKP)
+- ⚠️ Warning: "KOL payment - verify individual status and NPWP for correct tax withholding"
+
+**COGS vs OPEX Classification Rules:**
+- **COGS (5-0000 to 5-0999)**: ONLY direct billable project costs
+  - Examples: Media buys, production costs, talent fees, agency fees
+  - MUST have project code attached
+  - Appears on Project Profitability Report
+- **OPEX (5-1000 to 5-9999)**: All overhead and non-billable expenses
+  - Examples: Salaries, rent, office supplies, utilities, software subscriptions
+  - Should NOT have project code
+  - Appears on company P&L only
+- ⚠️ Validation: "COGS transaction MUST have project code (PSAK 34 - Revenue Recognition)"
+
+**ACCOUNT CODE STRUCTURE:**
+- 1-xxxxx: Assets (Cash, Bank, AR, Prepaid, Fixed Assets)
+- 2-xxxxx: Liabilities (AP, Tax Payables, Loans)
+- 3-xxxxx: Equity (Capital, Retained Earnings)
+- 4-xxxxx: Revenue (Sales, Service Revenue)
+- 5-0xxx: COGS (must have project code)
+- 5-1xxx+: OPEX (no project code)
+
+**PROACTIVE WARNINGS TO ISSUE:**
+1. "This looks like a KOL payment. Verify:
+   - Entity type = individual
+   - NPWP status for correct PPh 21 rate (2.5% or 5%)
+   - PKP status if charging PPN"
+   
+2. "Bills > IDR 1,000,000 claiming VAT must have Faktur Pajak number"
+
+3. "COGS transaction missing project code - violates PSAK 34 revenue recognition"
+
+4. "Vendor marked as 'subject to PPh 23' but no withholding recorded"
+
+5. "Large payment (> IDR 10,000,000) should have supporting invoice/contract attached"
+
+6. "Period close: Check for incomplete transactions, missing Faktur Pajak, unreconciled accounts"
+
+CONVERSATION GUIDELINES:
+- Be conversational and helpful, not robotic
+- Ask clarifying questions when details are missing
+- Explain WHY a rule applies, not just WHAT to do
+- Suggest journal entries with proper account codes
+- Always warn about potential tax/compliance risks
+- Use IDR currency format with thousands separators
+
+When suggesting journal entries, format like:
+**Suggested Journal Entry:**
+Date: [transaction date]
+Description: [clear description]
+
+| Account | Debit | Credit |
+|---------|-------|--------|
+| 5-xxxx [Account Name] | IDR x,xxx,xxx | - |
+| 2-xxxxx [Tax Payable] | - | IDR xxx,xxx |
+| 1-11000 [Bank Account] | - | IDR x,xxx,xxx |
+
+**Warnings:** [list any compliance concerns]
+**Next Steps:** [what user should verify/attach]
+
+Remember: Indonesian businesses MUST comply with tax withholding or face penalties. Always err on the side of caution.`;
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { conversationId, message, attachments } = await req.json();
+    
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing authorization header');
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get user from token
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !user) {
+      throw new Error('Unauthorized');
+    }
+
+    // Get or create conversation
+    let convId = conversationId;
+    if (!convId) {
+      const { data: newConv, error: convError } = await supabase
+        .from('conversation')
+        .insert({ created_by: user.id })
+        .select()
+        .single();
+      
+      if (convError) throw convError;
+      convId = newConv.id;
+    }
+
+    // Insert user message
+    await supabase.from('conversation_message').insert({
+      conversation_id: convId,
+      role: 'user',
+      content: message,
+      metadata: attachments ? { attachments } : null
+    });
+
+    // Get conversation history
+    const { data: messages } = await supabase
+      .from('conversation_message')
+      .select('*')
+      .eq('conversation_id', convId)
+      .order('created_at', { ascending: true });
+
+    // Build context: Get relevant tax rules and vendor data
+    const contextParts = [];
+    
+    // Get active tax rules
+    const { data: taxRules } = await supabase
+      .from('tax_rules')
+      .select('*')
+      .eq('is_active', true)
+      .limit(20);
+    
+    if (taxRules && taxRules.length > 0) {
+      contextParts.push(`Available Tax Rules:\n${taxRules.map(r => 
+        `- ${r.rule_type}: ${r.description} (Rate: ${r.rate ? (r.rate * 100) + '%' : 'N/A'})`
+      ).join('\n')}`);
+    }
+
+    // Get vendors for name matching
+    const { data: vendors } = await supabase
+      .from('vendor')
+      .select('name, code, subject_to_pph23, provides_faktur_pajak')
+      .eq('is_active', true)
+      .limit(50);
+    
+    if (vendors && vendors.length > 0) {
+      contextParts.push(`Known Vendors:\n${vendors.map(v => 
+        `- ${v.name} (${v.code}) - PPh23: ${v.subject_to_pph23 ? 'Yes' : 'No'}, PKP: ${v.provides_faktur_pajak ? 'Yes' : 'No'}`
+      ).join('\n')}`);
+    }
+
+    const contextMessage = contextParts.length > 0 
+      ? `\n\nCONTEXT FOR THIS CONVERSATION:\n${contextParts.join('\n\n')}`
+      : '';
+
+    // Call Lovable AI with streaming
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY not configured');
+    }
+
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: ENHANCED_SYSTEM_PROMPT + contextMessage },
+          ...(messages || []).slice(-10).map(m => ({ role: m.role, content: m.content }))
+        ],
+        stream: true,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again in a moment.');
+      }
+      if (response.status === 402) {
+        throw new Error('AI usage limit reached. Please add credits to your workspace.');
+      }
+      throw new Error(`AI API error: ${response.status}`);
+    }
+
+    // Stream response back to client
+    return new Response(response.body, {
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      }
+    });
+
+  } catch (error) {
+    console.error('chat-with-ai error:', error);
+    return new Response(
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
+  }
+});

@@ -47,6 +47,45 @@ export type Database = {
         }
         Relationships: []
       }
+      accounting_rules: {
+        Row: {
+          auto_fix: boolean | null
+          condition: Json | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          message: string
+          psak_reference: string | null
+          rule_category: string
+          rule_name: string
+          severity: string
+        }
+        Insert: {
+          auto_fix?: boolean | null
+          condition?: Json | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          message: string
+          psak_reference?: string | null
+          rule_category: string
+          rule_name: string
+          severity: string
+        }
+        Update: {
+          auto_fix?: boolean | null
+          condition?: Json | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          message?: string
+          psak_reference?: string | null
+          rule_category?: string
+          rule_name?: string
+          severity?: string
+        }
+        Relationships: []
+      }
       ai_audit: {
         Row: {
           audit_type: string
@@ -298,6 +337,110 @@ export type Database = {
         }
         Relationships: []
       }
+      compliance_issue: {
+        Row: {
+          action_required: string | null
+          detected_at: string | null
+          id: string
+          issue_type: string
+          message: string
+          related_entity_id: string | null
+          related_entity_type: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          status: string | null
+        }
+        Insert: {
+          action_required?: string | null
+          detected_at?: string | null
+          id?: string
+          issue_type: string
+          message: string
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity: string
+          status?: string | null
+        }
+        Update: {
+          action_required?: string | null
+          detected_at?: string | null
+          id?: string
+          issue_type?: string
+          message?: string
+          related_entity_id?: string | null
+          related_entity_type?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
+      conversation: {
+        Row: {
+          archived: boolean | null
+          created_at: string | null
+          created_by: string
+          id: string
+          last_message_at: string | null
+          title: string | null
+        }
+        Insert: {
+          archived?: boolean | null
+          created_at?: string | null
+          created_by: string
+          id?: string
+          last_message_at?: string | null
+          title?: string | null
+        }
+        Update: {
+          archived?: boolean | null
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          last_message_at?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
+      conversation_message: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          role: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          role: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_message_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_line: {
         Row: {
           amount: number
@@ -492,6 +635,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      knowledge_base: {
+        Row: {
+          content: string
+          created_at: string | null
+          document_type: string
+          id: string
+          metadata: Json | null
+          title: string
+          uploaded_by: string | null
+          version: number | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          document_type: string
+          id?: string
+          metadata?: Json | null
+          title: string
+          uploaded_by?: string | null
+          version?: number | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          document_type?: string
+          id?: string
+          metadata?: Json | null
+          title?: string
+          uploaded_by?: string | null
+          version?: number | null
+        }
+        Relationships: []
       }
       period_snapshot: {
         Row: {
@@ -720,6 +896,143 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           value?: string
+        }
+        Relationships: []
+      }
+      tax_rules: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          effective_from: string
+          effective_to: string | null
+          entity_type: Database["public"]["Enums"]["entity_type"] | null
+          exemptions: Json | null
+          id: string
+          is_active: boolean | null
+          rate: number | null
+          regulation_reference: string | null
+          requires_npwp: boolean | null
+          requires_pkp: boolean | null
+          rule_type: Database["public"]["Enums"]["tax_rule_type"]
+          service_category: string | null
+          threshold_amount: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          effective_from: string
+          effective_to?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type"] | null
+          exemptions?: Json | null
+          id?: string
+          is_active?: boolean | null
+          rate?: number | null
+          regulation_reference?: string | null
+          requires_npwp?: boolean | null
+          requires_pkp?: boolean | null
+          rule_type: Database["public"]["Enums"]["tax_rule_type"]
+          service_category?: string | null
+          threshold_amount?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          entity_type?: Database["public"]["Enums"]["entity_type"] | null
+          exemptions?: Json | null
+          id?: string
+          is_active?: boolean | null
+          rate?: number | null
+          regulation_reference?: string | null
+          requires_npwp?: boolean | null
+          requires_pkp?: boolean | null
+          rule_type?: Database["public"]["Enums"]["tax_rule_type"]
+          service_category?: string | null
+          threshold_amount?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      tax_rules_history: {
+        Row: {
+          change_reason: string | null
+          change_type: string
+          changed_by: string | null
+          created_at: string | null
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          tax_rule_id: string | null
+        }
+        Insert: {
+          change_reason?: string | null
+          change_type: string
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          tax_rule_id?: string | null
+        }
+        Update: {
+          change_reason?: string | null
+          change_type?: string
+          changed_by?: string | null
+          created_at?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          tax_rule_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_rules_history_tax_rule_id_fkey"
+            columns: ["tax_rule_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transaction_attachment: {
+        Row: {
+          created_at: string | null
+          extracted_data: Json | null
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          mime_type: string | null
+          transaction_id: string
+          transaction_type: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          extracted_data?: Json | null
+          file_name: string
+          file_path: string
+          file_size: number
+          id?: string
+          mime_type?: string | null
+          transaction_id: string
+          transaction_type: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          extracted_data?: Json | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          mime_type?: string | null
+          transaction_id?: string
+          transaction_type?: string
+          uploaded_by?: string | null
         }
         Relationships: []
       }
@@ -1155,6 +1468,7 @@ export type Database = {
       app_role: "admin" | "user"
       bill_category: "COGS" | "OPEX"
       bill_status: "DRAFT" | "APPROVED" | "PARTIAL" | "PAID" | "CANCELLED"
+      entity_type: "individual" | "company" | "government" | "kol" | "employee"
       invoice_status:
         | "DRAFT"
         | "SENT"
@@ -1165,6 +1479,7 @@ export type Database = {
       journal_status: "DRAFT" | "POSTED" | "REVERSED"
       project_status: "ACTIVE" | "COMPLETED" | "ON_HOLD"
       suggestion_status: "PENDING" | "ACCEPTED" | "EDITED" | "REJECTED"
+      tax_rule_type: "PPH21" | "PPH23" | "PPN" | "PPH_FINAL" | "FAKTUR_PAJAK"
       tx_status: "PENDING" | "CLASSIFIED" | "APPROVED" | "REJECTED"
     }
     CompositeTypes: {
@@ -1307,6 +1622,7 @@ export const Constants = {
       app_role: ["admin", "user"],
       bill_category: ["COGS", "OPEX"],
       bill_status: ["DRAFT", "APPROVED", "PARTIAL", "PAID", "CANCELLED"],
+      entity_type: ["individual", "company", "government", "kol", "employee"],
       invoice_status: [
         "DRAFT",
         "SENT",
@@ -1318,6 +1634,7 @@ export const Constants = {
       journal_status: ["DRAFT", "POSTED", "REVERSED"],
       project_status: ["ACTIVE", "COMPLETED", "ON_HOLD"],
       suggestion_status: ["PENDING", "ACCEPTED", "EDITED", "REJECTED"],
+      tax_rule_type: ["PPH21", "PPH23", "PPN", "PPH_FINAL", "FAKTUR_PAJAK"],
       tx_status: ["PENDING", "CLASSIFIED", "APPROVED", "REJECTED"],
     },
   },
