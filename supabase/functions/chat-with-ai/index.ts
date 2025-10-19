@@ -448,7 +448,7 @@ serve(async (req) => {
             type: 'function',
             function: {
               name: 'suggest_journal',
-              description: 'Use this tool WHENEVER user wants to record: owner deposits, capital contributions, manual adjustments, bank transfers, accruals, expense allocations, or any manual journal entry. This creates an interactive approval card with Approve/Reject buttons. REQUIRED when user says "catat", "record", "create", "ok bisa catat", or confirms they want to save a transaction. IMPORTANT: All amounts (debit/credit) must be whole numbers (integers) with no decimals - Indonesian Rupiah has no decimal places.',
+              description: 'Use this tool WHENEVER user wants to record: owner deposits, capital contributions, manual adjustments, bank transfers, accruals, expense allocations, or any manual journal entry. This creates an interactive approval card with Approve/Reject buttons. REQUIRED when user says "catat", "record", "create", "ok bisa catat", or confirms they want to save a transaction. IMPORTANT: All amounts (debit/credit) must be whole numbers (integers) with no decimals - Indonesian Rupiah has no decimal places. CRITICAL: Every line must have BOTH debit AND credit fields - set the unused one to 0.',
               parameters: {
                 type: 'object',
                 properties: {
@@ -463,10 +463,11 @@ serve(async (req) => {
                         account_code: { type: 'string' },
                         account_name: { type: 'string' },
                         description: { type: 'string' },
-                        debit: { type: 'number', description: 'Whole number only (no decimals)' },
-                        credit: { type: 'number', description: 'Whole number only (no decimals)' },
+                        debit: { type: 'number', description: 'Whole number only (no decimals). Set to 0 if this is a credit line.' },
+                        credit: { type: 'number', description: 'Whole number only (no decimals). Set to 0 if this is a debit line.' },
                         project_code: { type: 'string' }
-                      }
+                      },
+                      required: ['account_code', 'debit', 'credit']
                     }
                   }
                 },
