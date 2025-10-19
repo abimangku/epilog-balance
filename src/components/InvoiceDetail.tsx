@@ -6,9 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, ArrowLeft } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
+import { useUpdateInvoiceStatus } from '@/hooks/useInvoices'
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
+import { useToast } from '@/hooks/use-toast'
 
 export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>()
+  const updateStatus = useUpdateInvoiceStatus()
+  const { toast } = useToast()
 
   const { data: invoice, isLoading } = useQuery({
     queryKey: ['invoice', id],
@@ -60,17 +65,63 @@ export default function InvoiceDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" asChild>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
           <Link to="/invoices">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to List
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to List
+            </Button>
           </Link>
-        </Button>
-        <h1 className="text-3xl font-bold">Invoice {invoice.number}</h1>
-        <Badge variant={invoice.status === 'PAID' ? 'default' : 'secondary'}>
-          {invoice.status}
-        </Badge>
+          <h1 className="text-3xl font-bold">Invoice {invoice.number}</h1>
+          <Badge variant={
+            invoice.status === 'PAID' ? 'default' :
+            invoice.status === 'PARTIAL' ? 'secondary' :
+            invoice.status === 'OVERDUE' ? 'destructive' : 'outline'
+          }>
+            {invoice.status}
+          </Badge>
+        </div>
+        <div className="flex gap-2">
+          {invoice.status === 'DRAFT' && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="default">Send Invoice</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Send Invoice?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will mark the invoice as SENT and notify the client.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => {
+                    updateStatus.mutate({ id: invoice.id, status: 'SENT' }, {
+                      onSuccess: () => {
+                        toast({ title: 'Success', description: 'Invoice marked as SENT' })
+                      }
+                    })
+                  }}>
+                    Send
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          {(invoice.status === 'SENT' || invoice.status === 'PARTIAL') && balance === 0 && (
+            <Button onClick={() => {
+              updateStatus.mutate({ id: invoice.id, status: 'PAID' }, {
+                onSuccess: () => {
+                  toast({ title: 'Success', description: 'Invoice marked as PAID' })
+                }
+              })
+            }}>
+              Mark as Paid
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

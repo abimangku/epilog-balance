@@ -102,3 +102,17 @@ export function usePeriodSnapshot(period: string) {
     enabled: !!period,
   })
 }
+
+export function useValidatePeriod(period: string) {
+  return useQuery({
+    queryKey: ['period-validation', period],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('is_period_closed', { 
+        p_period: period 
+      })
+      if (error) throw error
+      return { isClosed: data }
+    },
+    enabled: !!period,
+  })
+}

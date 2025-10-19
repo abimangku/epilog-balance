@@ -86,6 +86,28 @@ export function useOutstandingInvoices() {
   })
 }
 
+export function useUpdateInvoiceStatus() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { data, error } = await supabase
+        .from('sales_invoice')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      queryClient.invalidateQueries({ queryKey: ['invoice'] })
+    },
+  })
+}
+
 export function useARAgingReport() {
   return useQuery({
     queryKey: ['ar-aging'],

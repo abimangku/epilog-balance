@@ -15,6 +15,27 @@ serve(async (req) => {
   }
 
   try {
+    // Get authenticated user
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      global: { headers: { Authorization: authHeader } }
+    })
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const { clientId, projectId, date, dueDate, description, lines } = await req.json()
 
     if (!clientId || !date || !dueDate || !lines || lines.length === 0) {
@@ -24,7 +45,7 @@ serve(async (req) => {
       )
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    const supabase = supabaseClient
 
     // Calculate totals
     const subtotal = lines.reduce((sum: number, line: any) => sum + line.amount, 0)
@@ -48,6 +69,7 @@ serve(async (req) => {
         total,
         description,
         status: 'DRAFT',
+        created_by: user.id,
       })
       .select()
       .single()

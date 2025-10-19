@@ -4,6 +4,7 @@ import { useVendors, useProjects } from '@/hooks/useVendors'
 import { useAccounts } from '@/hooks/useAccounts'
 import type { BillLine } from '@/hooks/useBills'
 import { useToast } from '@/hooks/use-toast'
+import { useValidatePeriod } from '@/hooks/usePeriodClose'
 
 export function BillForm() {
   const { data: vendors } = useVendors()
@@ -39,6 +40,9 @@ export function BillForm() {
     : 0
   const total = subtotal + vatAmount
 
+  const period = date ? new Date(date).toISOString().slice(0, 7) : ''
+  const { data: periodCheck } = useValidatePeriod(period)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -47,6 +51,15 @@ export function BillForm() {
         title: "Validation Error",
         description: "COGS bills must have a project",
         variant: "destructive",
+      })
+      return
+    }
+
+    if (periodCheck?.isClosed) {
+      toast({
+        title: 'Period Closed',
+        description: 'Cannot create bill in a closed period',
+        variant: 'destructive'
       })
       return
     }

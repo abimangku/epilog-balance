@@ -3,6 +3,8 @@ import { useAccounts } from '@/hooks/useAccounts'
 import { useCreateInvoice } from '@/hooks/useInvoices'
 import { supabase } from '@/integrations/supabase/client'
 import { useQuery } from '@tanstack/react-query'
+import { useValidatePeriod } from '@/hooks/usePeriodClose'
+import { useToast } from '@/hooks/use-toast'
 
 interface InvoiceLine {
   description: string
@@ -15,6 +17,7 @@ interface InvoiceLine {
 export function InvoiceForm() {
   const { data: accounts } = useAccounts()
   const createInvoice = useCreateInvoice()
+  const { toast } = useToast()
 
   const { data: clients } = useQuery({
     queryKey: ['clients'],
@@ -57,11 +60,27 @@ export function InvoiceForm() {
   const vatAmount = Math.round(subtotal * 0.11)
   const total = subtotal + vatAmount
 
+  const period = date ? new Date(date).toISOString().slice(0, 7) : ''
+  const { data: periodCheck } = useValidatePeriod(period)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!clientId || !date || !dueDate) {
-      alert('Please fill in all required fields')
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (periodCheck?.isClosed) {
+      toast({
+        title: 'Period Closed',
+        description: 'Cannot create invoice in a closed period',
+        variant: 'destructive'
+      })
       return
     }
 
@@ -75,7 +94,10 @@ export function InvoiceForm() {
         lines: lines.filter(line => line.description && line.amount > 0),
       })
 
-      alert('Invoice created successfully!')
+      toast({
+        title: 'Success',
+        description: 'Invoice created successfully!',
+      })
       
       // Reset form
       setClientId('')
@@ -83,7 +105,11 @@ export function InvoiceForm() {
       setDescription('')
       setLines([{ description: '', quantity: 1, unitPrice: 0, amount: 0, revenueAccountCode: '4-40100' }])
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to create invoice')
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create invoice',
+        variant: 'destructive'
+      })
     }
   }
 

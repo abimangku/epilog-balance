@@ -34,6 +34,14 @@ serve(async (req) => {
       })
     }
 
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      )
+    }
+
     const input: CreateBillInput = await req.json()
 
     if (!input.date || !input.vendorId || !input.lines || input.lines.length === 0) {
@@ -43,7 +51,7 @@ serve(async (req) => {
       )
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    const supabase = supabaseClient
 
     // Get vendor details
     const { data: vendor, error: vendorError } = await supabase

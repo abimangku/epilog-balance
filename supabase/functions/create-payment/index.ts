@@ -23,6 +23,27 @@ serve(async (req) => {
       })
     }
 
+    // Get authenticated user
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      )
+    }
+
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      global: { headers: { Authorization: authHeader } }
+    })
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
+      )
+    }
+
     const input: CreatePaymentInput = await req.json()
 
     if (!input.date || !input.billId || !input.amount || !input.bankAccountCode) {
@@ -32,7 +53,7 @@ serve(async (req) => {
       )
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    const supabase = supabaseClient
 
     // Get bill and vendor
     const { data: bill, error: billError } = await supabase
@@ -75,6 +96,7 @@ serve(async (req) => {
         pph23_withheld: pph23,
         bank_account_code: input.bankAccountCode,
         description: `Payment for ${bill.number}`,
+        created_by: user.id,
       })
       .select()
       .single()

@@ -15,6 +15,27 @@ serve(async (req) => {
   }
 
   try {
+    // Get authenticated user
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      global: { headers: { Authorization: authHeader } }
+    })
+
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const { invoiceId, date, amount, pph23Withheld, bankAccountCode, description } = await req.json()
 
     if (!invoiceId || !date || !amount || !bankAccountCode) {
@@ -24,7 +45,7 @@ serve(async (req) => {
       )
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    const supabase = supabaseClient
 
     // Get invoice details
     const { data: invoice, error: invoiceError } = await supabase
@@ -50,6 +71,7 @@ serve(async (req) => {
         pph23_withheld: pph23Withheld || 0,
         bank_account_code: bankAccountCode,
         description: description || `Payment for ${invoice.number}`,
+        created_by: user.id,
       })
       .select()
       .single()

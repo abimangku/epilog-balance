@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { BookOpen, FileText, TrendingUp, DollarSign, AlertCircle, Users } from 'lucide-react'
+import { BookOpen, FileText, TrendingUp, DollarSign, AlertCircle, Users, TrendingDown } from 'lucide-react'
 import { useDashboardMetrics } from '@/hooks/useCriticalFeatures'
 
 export function Dashboard() {

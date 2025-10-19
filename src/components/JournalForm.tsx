@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
+import { useValidatePeriod } from '@/hooks/usePeriodClose'
 import { Plus, X, CheckCircle2, AlertCircle } from 'lucide-react'
 
 export function JournalForm() {
@@ -24,8 +25,20 @@ export function JournalForm() {
   const totalCredit = lines.reduce((sum, line) => sum + line.credit, 0)
   const isBalanced = totalDebit === totalCredit && totalDebit > 0
 
+  const period = date ? new Date(date).toISOString().slice(0, 7) : ''
+  const { data: periodCheck } = useValidatePeriod(period)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (periodCheck?.isClosed) {
+      toast({
+        title: 'Period Closed',
+        description: 'Cannot create journal in a closed period',
+        variant: 'destructive'
+      })
+      return
+    }
 
     try {
       await createJournal.mutateAsync({
