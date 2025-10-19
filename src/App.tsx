@@ -7,6 +7,7 @@ import { Dashboard } from "./components/Dashboard";
 import { COATable } from "./components/COATable";
 import { JournalForm } from "./components/JournalForm";
 import { AIAssistant } from "./components/AIAssistant";
+import { AIHomePage } from "./components/AIHomePage";
 import { ComplianceDashboard } from "./components/ComplianceDashboard";
 import { CashFlowReport } from "./components/CashFlowReport";
 import { TaxRulesManagement } from "./components/TaxRulesManagement";
@@ -66,8 +67,15 @@ const App = () => (
                 to="/" 
                 className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
               >
+                <Brain className="h-4 w-4" />
+                AI Home
+              </Link>
+              <Link 
+                to="/dashboard" 
+                className="flex items-center gap-3 px-4 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+              >
                 <Home className="h-4 w-4" />
-                Dashboard
+                Classic Dashboard
               </Link>
               <Link 
                 to="/accounts" 
@@ -322,7 +330,8 @@ const App = () => (
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
-              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/" element={<ProtectedRoute><AIHomePage /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/accounts" element={<ProtectedRoute><AccountManagement /></ProtectedRoute>} />
               <Route path="/journals" element={<ProtectedRoute><JournalList /></ProtectedRoute>} />
               <Route path="/journals/:id" element={<ProtectedRoute><JournalDetail /></ProtectedRoute>} />
