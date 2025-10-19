@@ -14,15 +14,28 @@ export function useJournals(filters?: {
     queryKey: ['journals', filters],
     queryFn: async () => {
       let query = supabase
-        .from('journal_register' as any)
-        .select('*')
+        .from('journal')
+        .select(`
+          id,
+          number,
+          date,
+          description,
+          status,
+          period,
+          voided_at:voided_at,
+          reversed_by,
+          is_reversal,
+          lines:journal_line(id, debit, credit)
+        `)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (filters?.period) {
         query = query.eq('period', filters.period)
       }
 
       if (filters?.status) {
-        query = query.eq('status', filters.status)
+        query = query.eq('status', filters.status as any)
       }
 
       if (filters?.searchTerm) {
@@ -32,7 +45,17 @@ export function useJournals(filters?: {
       const { data, error } = await query
 
       if (error) throw error
-      return data as any[]
+      
+      // Calculate totals and line count for each journal
+      return (data as any[]).map(journal => {
+        const lines = journal.lines || []
+        return {
+          ...journal,
+          line_count: lines.length,
+          total_debit: lines.reduce((sum: number, line: any) => sum + (Number(line.debit) || 0), 0),
+          total_credit: lines.reduce((sum: number, line: any) => sum + (Number(line.credit) || 0), 0),
+        }
+      })
     },
   })
 }
@@ -234,15 +257,35 @@ export function useUpdateCompanySettings() {
 
   return useMutation({
     mutationFn: async (settings: any) => {
-      const { data, error } = await supabase
+      // Get existing record
+      const { data: existingRecords } = await supabase
         .from('company_settings' as any)
-        .update(settings)
-        .eq('id', settings.id)
-        .select()
-        .single()
+        .select('id') as any
 
-      if (error) throw error
-      return data
+      const existing = existingRecords?.[0]
+
+      if (existing?.id) {
+        // Update existing record
+        const { data, error } = await supabase
+          .from('company_settings' as any)
+          .update(settings)
+          .eq('id', existing.id)
+          .select()
+          .single()
+
+        if (error) throw error
+        return data
+      } else {
+        // Insert new record
+        const { data, error } = await supabase
+          .from('company_settings' as any)
+          .insert(settings)
+          .select()
+          .single()
+
+        if (error) throw error
+        return data
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['company-settings'] })
@@ -306,21 +349,21 @@ export function usePPNReport(period: string) {
 // ACTIVITY LOG
 // =============================================
 
-export function useActivityLog(entityType?: string, entityId?: string) {
+export function useActivityLog(tableName?: string, recordId?: string) {
   return useQuery({
-    queryKey: ['activity-log', entityType, entityId],
+    queryKey: ['activity-log', tableName, recordId],
     queryFn: async () => {
       let query = supabase
         .from('audit_log' as any)
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('changed_at', { ascending: false })
 
-      if (entityType) {
-        query = query.eq('entity_type', entityType)
+      if (tableName) {
+        query = query.eq('table_name', tableName)
       }
 
-      if (entityId) {
-        query = query.eq('entity_id', entityId)
+      if (recordId) {
+        query = query.eq('record_id', recordId)
       }
 
       const { data, error } = await query.limit(100)

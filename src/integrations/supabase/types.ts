@@ -454,6 +454,60 @@ export type Database = {
         }
         Relationships: []
       }
+      company_settings: {
+        Row: {
+          address: string | null
+          base_currency: string | null
+          city: string | null
+          company_name: string
+          country: string | null
+          created_at: string | null
+          email: string | null
+          fiscal_year_end: string | null
+          id: string
+          legal_name: string | null
+          phone: string | null
+          postal_code: string | null
+          tax_id: string | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          base_currency?: string | null
+          city?: string | null
+          company_name: string
+          country?: string | null
+          created_at?: string | null
+          email?: string | null
+          fiscal_year_end?: string | null
+          id?: string
+          legal_name?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          tax_id?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          base_currency?: string | null
+          city?: string | null
+          company_name?: string
+          country?: string | null
+          created_at?: string | null
+          email?: string | null
+          fiscal_year_end?: string | null
+          id?: string
+          legal_name?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          tax_id?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       compliance_issue: {
         Row: {
           action_required: string | null
