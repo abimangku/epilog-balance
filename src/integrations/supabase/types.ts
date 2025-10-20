@@ -412,12 +412,15 @@ export type Database = {
       client: {
         Row: {
           address: string | null
+          city: string | null
           code: string
+          contact_person: string | null
           created_at: string | null
           email: string | null
           id: string
           is_active: boolean | null
           name: string
+          notes: string | null
           payment_terms: number | null
           phone: string | null
           tax_id: string | null
@@ -426,12 +429,15 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          city?: string | null
           code: string
+          contact_person?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
           is_active?: boolean | null
           name: string
+          notes?: string | null
           payment_terms?: number | null
           phone?: string | null
           tax_id?: string | null
@@ -440,12 +446,15 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          city?: string | null
           code?: string
+          contact_person?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
+          notes?: string | null
           payment_terms?: number | null
           phone?: string | null
           tax_id?: string | null
@@ -940,37 +949,46 @@ export type Database = {
       }
       project: {
         Row: {
+          budget_amount: number | null
           client_id: string | null
           code: string
           created_at: string | null
+          description: string | null
           end_date: string | null
           id: string
           is_active: boolean | null
           name: string
+          notes: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["project_status"] | null
           updated_at: string | null
         }
         Insert: {
+          budget_amount?: number | null
           client_id?: string | null
           code: string
           created_at?: string | null
+          description?: string | null
           end_date?: string | null
           id?: string
           is_active?: boolean | null
           name: string
+          notes?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["project_status"] | null
           updated_at?: string | null
         }
         Update: {
+          budget_amount?: number | null
           client_id?: string | null
           code?: string
           created_at?: string | null
+          description?: string | null
           end_date?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
+          notes?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["project_status"] | null
           updated_at?: string | null
@@ -1366,12 +1384,18 @@ export type Database = {
       vendor: {
         Row: {
           address: string | null
+          bank_account_name: string | null
+          bank_account_number: string | null
+          bank_name: string | null
+          city: string | null
           code: string
+          contact_person: string | null
           created_at: string | null
           email: string | null
           id: string
           is_active: boolean | null
           name: string
+          notes: string | null
           payment_terms: number | null
           phone: string | null
           pph23_rate: number | null
@@ -1382,12 +1406,18 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          city?: string | null
           code: string
+          contact_person?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
           is_active?: boolean | null
           name: string
+          notes?: string | null
           payment_terms?: number | null
           phone?: string | null
           pph23_rate?: number | null
@@ -1398,12 +1428,18 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          bank_account_name?: string | null
+          bank_account_number?: string | null
+          bank_name?: string | null
+          city?: string | null
           code?: string
+          contact_person?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
+          notes?: string | null
           payment_terms?: number | null
           phone?: string | null
           pph23_rate?: number | null

@@ -71,7 +71,19 @@ export function useUpdateClient() {
     mutationFn: async ({ id, ...input }: { id: string; [key: string]: any }) => {
       const { data, error } = await supabase
         .from('client')
-        .update(input)
+        .update({
+          code: input.code,
+          name: input.name,
+          tax_id: input.taxId,
+          email: input.email,
+          contact_person: input.contactPerson,
+          phone: input.phone,
+          address: input.address,
+          city: input.city,
+          payment_terms: input.paymentTerms,
+          withholds_pph23: input.withholdsPPh23,
+          notes: input.notes,
+        })
         .eq('id', id)
         .select()
         .single()
@@ -164,7 +176,24 @@ export function useUpdateVendor() {
     mutationFn: async ({ id, ...input }: { id: string; [key: string]: any }) => {
       const { data, error } = await supabase
         .from('vendor')
-        .update(input)
+        .update({
+          code: input.code,
+          name: input.name,
+          tax_id: input.taxId,
+          email: input.email,
+          contact_person: input.contactPerson,
+          phone: input.phone,
+          address: input.address,
+          city: input.city,
+          payment_terms: input.paymentTerms,
+          provides_faktur_pajak: input.providesFakturPajak,
+          subject_to_pph23: input.subjectToPPh23,
+          pph23_rate: input.pph23Rate,
+          bank_name: input.bankName,
+          bank_account_number: input.bankAccountNumber,
+          bank_account_name: input.bankAccountName,
+          notes: input.notes,
+        })
         .eq('id', id)
         .select()
         .single()
@@ -258,7 +287,17 @@ export function useUpdateProject() {
     mutationFn: async ({ id, ...input }: { id: string; [key: string]: any }) => {
       const { data, error } = await supabase
         .from('project')
-        .update(input)
+        .update({
+          code: input.code,
+          name: input.name,
+          client_id: input.clientId,
+          description: input.description,
+          start_date: input.startDate,
+          end_date: input.endDate,
+          budget_amount: input.budgetAmount,
+          status: input.status,
+          notes: input.notes,
+        })
         .eq('id', id)
         .select()
         .single()
