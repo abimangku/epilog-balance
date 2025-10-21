@@ -46,6 +46,7 @@ import ReceiptList from "./components/ReceiptList";
 import AccountManagement from "./components/AccountManagement";
 import { TransactionsList } from "./components/TransactionsList";
 import { AIActivityLog } from "./components/AIActivityLog";
+import { DataImportDashboard } from "./components/DataImport/DataImportDashboard";
 import { BookOpen, FileText, Home, Brain, Inbox, Receipt, DollarSign, BarChart3, FileStack, CreditCard, TrendingUp, Lock, Camera, PieChart, Users, Building2, FolderKanban, List, FileCheck, Settings, FileSpreadsheet, Landmark, ChevronDown, AlertCircle, Activity } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -384,6 +385,7 @@ const App = () => (
               <Route path="/settings/tax-rules" element={<ProtectedRoute><TaxRulesManagement /></ProtectedRoute>} />
               <Route path="/compliance" element={<ProtectedRoute><ComplianceDashboard /></ProtectedRoute>} />
               <Route path="/reports/cash-flow" element={<ProtectedRoute><CashFlowReport /></ProtectedRoute>} />
+              <Route path="/data-import" element={<ProtectedRoute><DataImportDashboard /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

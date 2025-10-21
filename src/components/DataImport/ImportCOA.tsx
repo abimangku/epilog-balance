@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
 import { Upload, CheckCircle2, AlertCircle, Download } from 'lucide-react'
 import * as XLSX from 'xlsx'
+import type { AccountType } from '@/lib/types'
 
 interface COARow {
   code: string
@@ -59,8 +60,8 @@ export function ImportCOA() {
     }
   }
 
-  const mapCategoryToType = (categoryNum: number): string => {
-    const mapping: Record<number, string> = {
+  const mapCategoryToType = (categoryNum: number): AccountType => {
+    const mapping: Record<number, AccountType> = {
       1: 'ASSET', // Akun Piutang
       2: 'ASSET', // Aktiva Lancar Lainnya
       3: 'ASSET', // Kas & Bank
