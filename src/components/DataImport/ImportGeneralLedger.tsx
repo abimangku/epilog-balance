@@ -60,17 +60,23 @@ export function ImportGeneralLedger() {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]]
       const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[]
 
+      // Extract account code from "Nama Akun" column which has format "(CODE) Name"
+      const extractAccountCode = (namaAkun: string): string => {
+        const match = namaAkun?.match(/\(([^)]+)\)/)
+        return match ? match[1] : ''
+      }
+
       const mapped = jsonData
-        .filter((row) => row['Transaction Type'] && row['Transaction Type'] !== 'Saldo Awal')
+        .filter((row) => row['Transaksi'] && row['Transaksi'] !== 'Saldo Awal')
         .map((row) => ({
-          accountCode: row['Account Code'] || '',
-          accountName: row['Account Name'] || '',
-          date: row['Date'] || '',
-          transactionType: row['Transaction Type'] || '',
-          transactionNumber: row['Transaction Number'] || '',
-          description: row['Description'] || '',
-          debit: parseFloat(row['Debit'] || '0'),
-          credit: parseFloat(row['Credit'] || '0'),
+          accountCode: extractAccountCode(row['Nama Akun'] || ''),
+          accountName: row['Nama Akun'] || '',
+          date: row['Tanggal'] || '',
+          transactionType: row['Transaksi'] || '',
+          transactionNumber: row['Nomor'] || '',
+          description: row['Keterangan'] || '',
+          debit: parseFloat(String(row['Debit'] || '0').replace(/,/g, '')),
+          credit: parseFloat(String(row['Kredit'] || '0').replace(/,/g, '')),
         }))
         .filter((row) => row.accountCode && row.transactionNumber)
 
@@ -156,17 +162,23 @@ export function ImportGeneralLedger() {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]]
       const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[]
 
+      // Extract account code from "Nama Akun" column which has format "(CODE) Name"
+      const extractAccountCode = (namaAkun: string): string => {
+        const match = namaAkun?.match(/\(([^)]+)\)/)
+        return match ? match[1] : ''
+      }
+
       const glLines = jsonData
-        .filter((row) => row['Transaction Type'] && row['Transaction Type'] !== 'Saldo Awal')
+        .filter((row) => row['Transaksi'] && row['Transaksi'] !== 'Saldo Awal')
         .map((row) => ({
-          accountCode: row['Account Code'] || '',
-          accountName: row['Account Name'] || '',
-          date: row['Date'] || '',
-          transactionType: row['Transaction Type'] || '',
-          transactionNumber: row['Transaction Number'] || '',
-          description: row['Description'] || '',
-          debit: parseFloat(row['Debit'] || '0'),
-          credit: parseFloat(row['Credit'] || '0'),
+          accountCode: extractAccountCode(row['Nama Akun'] || ''),
+          accountName: row['Nama Akun'] || '',
+          date: row['Tanggal'] || '',
+          transactionType: row['Transaksi'] || '',
+          transactionNumber: row['Nomor'] || '',
+          description: row['Keterangan'] || '',
+          debit: parseFloat(String(row['Debit'] || '0').replace(/,/g, '')),
+          credit: parseFloat(String(row['Kredit'] || '0').replace(/,/g, '')),
         }))
         .filter((row) => row.accountCode && row.transactionNumber)
 
@@ -236,13 +248,16 @@ export function ImportGeneralLedger() {
             throw new Error(`Unbalanced entry: DR ${totalDebit} != CR ${totalCredit}`)
           }
 
-          // Parse date
+          // Parse date from DD/MM/YYYY format
           const dateStr = tx.date
           let journalDate: string
           
           if (dateStr.includes('/')) {
-            const [day, month, year] = dateStr.split('/')
-            journalDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+            const parts = dateStr.split('/')
+            const day = parts[0].padStart(2, '0')
+            const month = parts[1].padStart(2, '0')
+            const year = parts[2]
+            journalDate = `${year}-${month}-${day}`
           } else {
             journalDate = dateStr
           }
