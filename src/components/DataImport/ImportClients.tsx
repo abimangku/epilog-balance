@@ -76,10 +76,17 @@ export function ImportClients() {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]]
       const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[]
 
+      // Get existing client count to generate proper codes
+      const { count } = await supabase
+        .from('client')
+        .select('*', { count: 'exact', head: true })
+
+      const startIndex = (count || 0) + 1
+
       const clients = jsonData
         .filter((row) => row['*Type'] === 'customer')
         .map((row, index) => ({
-          code: `CUST-${String(index + 1).padStart(4, '0')}`,
+          code: `CUST-${String(startIndex + index).padStart(4, '0')}`,
           name: row['*DisplayName'] || row['DisplayName'],
           email: row['Email'] || '',
           contact_person: row['Title'] ? `${row['Title']} ${row['FirstName'] || ''} ${row['LastName'] || ''}`.trim() : '',
@@ -88,6 +95,7 @@ export function ImportClients() {
           city: row['BillingAddressCity'] || '',
           tax_id: row['TaxNumber'] || '',
           payment_terms: 30,
+          withholds_pph23: false,
           is_active: true,
         }))
         .filter((row) => row.name)

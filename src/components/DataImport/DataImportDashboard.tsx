@@ -5,7 +5,9 @@ import { ImportCOA } from './ImportCOA'
 import { ImportClients } from './ImportClients'
 import { ImportOpeningBalances } from './ImportOpeningBalances'
 import { ImportHistory } from './ImportHistory'
-import { FileUp, Users, ListTree, DollarSign } from 'lucide-react'
+import { ImportGeneralLedger } from './ImportGeneralLedger'
+import { ImportValidation } from './ImportValidation'
+import { FileUp, Users, ListTree, DollarSign, FileText, CheckCircle } from 'lucide-react'
 
 export function DataImportDashboard() {
   const [activeTab, setActiveTab] = useState('coa')
@@ -20,10 +22,10 @@ export function DataImportDashboard() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="coa" className="flex items-center gap-2">
             <ListTree className="h-4 w-4" />
-            Chart of Accounts
+            COA
           </TabsTrigger>
           <TabsTrigger value="clients" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
@@ -31,11 +33,19 @@ export function DataImportDashboard() {
           </TabsTrigger>
           <TabsTrigger value="opening" className="flex items-center gap-2">
             <DollarSign className="h-4 w-4" />
-            Opening Balances
+            Opening
+          </TabsTrigger>
+          <TabsTrigger value="gl" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            General Ledger
+          </TabsTrigger>
+          <TabsTrigger value="validation" className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4" />
+            Validation
           </TabsTrigger>
           <TabsTrigger value="history" className="flex items-center gap-2">
             <FileUp className="h-4 w-4" />
-            Import History
+            History
           </TabsTrigger>
         </TabsList>
 
@@ -49,6 +59,14 @@ export function DataImportDashboard() {
 
         <TabsContent value="opening" className="mt-6">
           <ImportOpeningBalances />
+        </TabsContent>
+
+        <TabsContent value="gl" className="mt-6">
+          <ImportGeneralLedger />
+        </TabsContent>
+
+        <TabsContent value="validation" className="mt-6">
+          <ImportValidation />
         </TabsContent>
 
         <TabsContent value="history" className="mt-6">
