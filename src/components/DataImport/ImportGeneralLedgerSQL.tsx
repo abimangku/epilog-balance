@@ -605,94 +605,87 @@ export function ImportGeneralLedgerSQL() {
 
   const handleCleanup = async () => {
     const confirmed = confirm(
-      '⚠️ CRITICAL: This will delete ALL journals that have no journal lines.\n\n' +
-      'This includes broken journals from previous imports, invoices, bills, etc.\n\n' +
-      'This action cannot be undone. Continue?'
+      '⚠️ CLEAN SLATE RESET - CANNOT BE UNDONE\n\n' +
+      'This will DELETE:\n' +
+      '• ALL journals and journal lines\n' +
+      '• ALL AI conversations and messages\n' +
+      '• ALL AI suggestions\n\n' +
+      'This will PRESERVE:\n' +
+      '✓ Chart of Accounts\n' +
+      '✓ Clients, Vendors, Projects\n' +
+      '✓ Bank Accounts, Company Settings\n\n' +
+      'Continue with COMPLETE reset?'
     )
     
     if (!confirmed) return
 
     setIsCleaning(true)
-    console.log('🧹 Starting cleanup of broken journals...')
+    console.log('🧹 Starting CLEAN SLATE RESET...')
+    toast('Starting clean slate reset...', { duration: 2000 })
 
     try {
-      // Find all journals (no import_log_id filter)
-      const { data: allJournals, error: queryError } = await supabase
+      // Step 1: Delete journal lines
+      console.log('Step 1: Deleting journal lines...')
+      const { error: linesError } = await supabase
+        .from('journal_line')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000')
+
+      if (linesError) throw linesError
+      console.log('✓ Journal lines deleted')
+
+      // Step 2: Delete journals
+      console.log('Step 2: Deleting journals...')
+      const { error: journalsError } = await supabase
         .from('journal')
-        .select('id, number')
-        .order('created_at', { ascending: false })
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000')
 
-      if (queryError) throw queryError
+      if (journalsError) throw journalsError
+      console.log('✓ Journals deleted')
 
-      if (!allJournals || allJournals.length === 0) {
-        toast.info('No journals found in database')
-        console.log('No journals found')
-        return
-      }
+      // Step 3: Delete AI suggestion logs
+      console.log('Step 3: Deleting AI suggestions...')
+      const { error: suggestionsError } = await supabase
+        .from('ai_suggestion_log')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000')
 
-      console.log(`📊 Found ${allJournals.length} total journals, checking for broken ones...`)
+      if (suggestionsError) throw suggestionsError
+      console.log('✓ AI suggestions deleted')
 
-      // Check which have no lines (batch check in chunks)
-      const journalsToDelete: string[] = []
-      const chunkSize = 50
+      // Step 4: Delete conversation messages
+      console.log('Step 4: Deleting conversation messages...')
+      const { error: messagesError } = await supabase
+        .from('conversation_message')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000')
+
+      if (messagesError) throw messagesError
+      console.log('✓ Conversation messages deleted')
+
+      // Step 5: Delete conversations
+      console.log('Step 5: Deleting conversations...')
+      const { error: conversationsError } = await supabase
+        .from('conversation')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000')
+
+      if (conversationsError) throw conversationsError
+      console.log('✓ Conversations deleted')
+
+      toast.success('✅ Clean Slate Reset Complete!', { duration: 3000 })
+      console.log('=== CLEAN SLATE RESET COMPLETED SUCCESSFULLY ===')
       
-      for (let i = 0; i < allJournals.length; i += chunkSize) {
-        const chunk = allJournals.slice(i, i + chunkSize)
-        const journalIds = chunk.map(j => j.id)
-        
-        const { data: lines, error: linesError } = await supabase
-          .from('journal_line')
-          .select('journal_id')
-          .in('journal_id', journalIds)
-        
-        if (linesError) throw linesError
-        
-        const journalsWithLines = new Set(lines?.map(l => l.journal_id) || [])
-        
-        for (const journal of chunk) {
-          if (!journalsWithLines.has(journal.id)) {
-            journalsToDelete.push(journal.id)
-            console.log(`❌ Broken journal: ${journal.number} (${journal.id})`)
-          }
-        }
-      }
-
-      if (journalsToDelete.length === 0) {
-        toast.info('✅ No broken journals found - all journals have lines!')
-        console.log('✅ All journals are healthy')
-        return
-      }
-
-      console.log(`🗑️ Deleting ${journalsToDelete.length} broken journals...`)
-
-      // Delete broken journals in batches
-      const deleteBatchSize = 100
-      let deletedCount = 0
-      
-      for (let i = 0; i < journalsToDelete.length; i += deleteBatchSize) {
-        const batch = journalsToDelete.slice(i, i + deleteBatchSize)
-        const { error: deleteError } = await supabase
-          .from('journal')
-          .delete()
-          .in('id', batch)
-
-        if (deleteError) throw deleteError
-        deletedCount += batch.length
-        console.log(`Progress: ${deletedCount}/${journalsToDelete.length} deleted`)
-      }
-
-      toast.success(`✅ Successfully deleted ${deletedCount} broken journals!`)
-      console.log(`✅ Cleanup complete: ${deletedCount} journals deleted`)
-      
-      // Refresh the page to show updated data
+      // Refresh the page to show clean state
       setTimeout(() => {
-        toast.info('Refreshing page to show updated data...')
+        toast.info('Refreshing to show clean state...')
         window.location.reload()
       }, 2000)
       
     } catch (error) {
-      console.error('❌ Cleanup error:', error)
-      toast.error(`Cleanup failed: ${error.message}`)
+      console.error('❌ Clean slate reset error:', error)
+      toast.error(`Reset failed: ${error.message}`)
     } finally {
       setIsCleaning(false)
     }
@@ -816,7 +809,7 @@ export function ImportGeneralLedgerSQL() {
                 variant="destructive"
                 className="flex-1"
               >
-                {isCleaning ? '🧹 Cleaning...' : '🗑️ Clean Broken Journals'}
+                {isCleaning ? '🧹 Resetting...' : '🗑️ Clean Slate Reset'}
               </Button>
               
               {!validation ? (
