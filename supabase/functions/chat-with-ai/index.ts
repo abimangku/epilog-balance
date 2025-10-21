@@ -451,7 +451,7 @@ serve(async (req) => {
     if (await shouldGenerateTitle()) {
       try {
         // Find the first substantive user message
-        const userMessages = messages.filter(m => m.role === 'user');
+        const userMessages = messages?.filter(m => m.role === 'user') || [];
         const firstUserMessage = userMessages[0]?.content || '';
         const greetings = ['halo', 'hai', 'hi', 'hello', 'hey', 'selamat pagi', 'selamat siang', 'selamat malam', 'morning', 'good morning', 'good afternoon', 'good evening'];
         const isFirstGreeting = greetings.some(g => firstUserMessage.toLowerCase().trim() === g || firstUserMessage.toLowerCase().trim() === g + '!');
