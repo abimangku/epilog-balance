@@ -571,55 +571,94 @@ export function ImportGeneralLedgerSQL() {
   }
 
   const handleCleanup = async () => {
-    if (!confirm('This will delete all journals that have no journal lines. Continue?')) {
-      return
-    }
+    const confirmed = confirm(
+      '⚠️ CRITICAL: This will delete ALL journals that have no journal lines.\n\n' +
+      'This includes broken journals from previous imports, invoices, bills, etc.\n\n' +
+      'This action cannot be undone. Continue?'
+    )
+    
+    if (!confirmed) return
 
     setIsCleaning(true)
+    console.log('🧹 Starting cleanup of broken journals...')
 
     try {
-      // Find journals with no lines
-      const { data: brokenJournals, error: queryError } = await supabase
+      // Find all journals (no import_log_id filter)
+      const { data: allJournals, error: queryError } = await supabase
         .from('journal')
-        .select('id')
-        .not('import_log_id', 'is', null)
+        .select('id, number')
+        .order('created_at', { ascending: false })
 
       if (queryError) throw queryError
 
-      if (!brokenJournals || brokenJournals.length === 0) {
-        toast.info('No broken journals found')
+      if (!allJournals || allJournals.length === 0) {
+        toast.info('No journals found in database')
+        console.log('No journals found')
         return
       }
 
-      // Check which have no lines
+      console.log(`📊 Found ${allJournals.length} total journals, checking for broken ones...`)
+
+      // Check which have no lines (batch check in chunks)
       const journalsToDelete: string[] = []
-      for (const j of brokenJournals) {
-        const { count } = await supabase
-          .from('journal_line')
-          .select('*', { count: 'exact', head: true })
-          .eq('journal_id', j.id)
+      const chunkSize = 50
+      
+      for (let i = 0; i < allJournals.length; i += chunkSize) {
+        const chunk = allJournals.slice(i, i + chunkSize)
+        const journalIds = chunk.map(j => j.id)
         
-        if (count === 0) {
-          journalsToDelete.push(j.id)
+        const { data: lines, error: linesError } = await supabase
+          .from('journal_line')
+          .select('journal_id')
+          .in('journal_id', journalIds)
+        
+        if (linesError) throw linesError
+        
+        const journalsWithLines = new Set(lines?.map(l => l.journal_id) || [])
+        
+        for (const journal of chunk) {
+          if (!journalsWithLines.has(journal.id)) {
+            journalsToDelete.push(journal.id)
+            console.log(`❌ Broken journal: ${journal.number} (${journal.id})`)
+          }
         }
       }
 
       if (journalsToDelete.length === 0) {
-        toast.info('No broken journals found')
+        toast.info('✅ No broken journals found - all journals have lines!')
+        console.log('✅ All journals are healthy')
         return
       }
 
-      // Delete broken journals
-      const { error: deleteError } = await supabase
-        .from('journal')
-        .delete()
-        .in('id', journalsToDelete)
+      console.log(`🗑️ Deleting ${journalsToDelete.length} broken journals...`)
 
-      if (deleteError) throw deleteError
+      // Delete broken journals in batches
+      const deleteBatchSize = 100
+      let deletedCount = 0
+      
+      for (let i = 0; i < journalsToDelete.length; i += deleteBatchSize) {
+        const batch = journalsToDelete.slice(i, i + deleteBatchSize)
+        const { error: deleteError } = await supabase
+          .from('journal')
+          .delete()
+          .in('id', batch)
 
-      toast.success(`Deleted ${journalsToDelete.length} broken journals`)
+        if (deleteError) throw deleteError
+        deletedCount += batch.length
+        console.log(`Progress: ${deletedCount}/${journalsToDelete.length} deleted`)
+      }
+
+      toast.success(`✅ Successfully deleted ${deletedCount} broken journals!`)
+      console.log(`✅ Cleanup complete: ${deletedCount} journals deleted`)
+      
+      // Refresh the page to show updated data
+      setTimeout(() => {
+        toast.info('Refreshing page to show updated data...')
+        window.location.reload()
+      }, 2000)
+      
     } catch (error) {
-      console.error('Cleanup error:', error)
+      console.error('❌ Cleanup error:', error)
       toast.error(`Cleanup failed: ${error.message}`)
     } finally {
       setIsCleaning(false)
@@ -741,10 +780,10 @@ export function ImportGeneralLedgerSQL() {
               <Button
                 onClick={handleCleanup}
                 disabled={isCleaning}
-                variant="outline"
+                variant="destructive"
                 className="flex-1"
               >
-                {isCleaning ? 'Cleaning...' : 'Clean Broken Journals'}
+                {isCleaning ? '🧹 Cleaning...' : '🗑️ Clean Broken Journals'}
               </Button>
               
               {!validation ? (
