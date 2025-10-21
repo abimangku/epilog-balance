@@ -101,6 +101,10 @@ export function ImportCOA() {
         type: mapCategoryToType(row['*NomorKategori'] || row['NomorKategori']),
       })).filter(row => row.code && row.name)
 
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('User not authenticated')
+
       const { data: importLogData, error: logError } = await supabase
         .from('import_log')
         .insert({
@@ -111,6 +115,7 @@ export function ImportCOA() {
           records_success: 0,
           records_failed: 0,
           error_details: [],
+          imported_by: user.id,
         })
         .select()
         .single()

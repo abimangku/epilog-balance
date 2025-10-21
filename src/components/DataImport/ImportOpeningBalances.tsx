@@ -139,6 +139,10 @@ export function ImportOpeningBalances() {
 
       setProgress(80)
 
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('User not authenticated')
+
       // Log import
       await supabase.from('import_log').insert({
         import_type: 'opening_balances',
@@ -148,6 +152,7 @@ export function ImportOpeningBalances() {
         records_success: openingBalances.length,
         records_failed: 0,
         error_details: { journal_id: journalData.id },
+        imported_by: user.id,
       })
 
       setProgress(100)

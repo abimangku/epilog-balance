@@ -195,6 +195,10 @@ export function ImportGeneralLedger() {
 
       const transactions = Array.from(groupedTransactions.values())
 
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('User not authenticated')
+
       // Create import log
       const { data: importLogData, error: logError } = await supabase
         .from('import_log')
@@ -206,6 +210,7 @@ export function ImportGeneralLedger() {
           records_success: 0,
           records_failed: 0,
           error_details: [],
+          imported_by: user.id,
         })
         .select()
         .single()
