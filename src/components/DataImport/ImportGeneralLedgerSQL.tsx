@@ -22,6 +22,7 @@ interface GLRow {
 export function ImportGeneralLedgerSQL() {
   const [file, setFile] = useState<File | null>(null)
   const [isImporting, setIsImporting] = useState(false)
+  const [isCleaning, setIsCleaning] = useState(false)
   const [result, setResult] = useState<{
     accountsCreated: number
     projectsCreated: number
@@ -217,55 +218,81 @@ export function ImportGeneralLedgerSQL() {
 
       console.log(`Processing ${transactionGroups.size} transaction groups`)
 
-      let journalsCreated = 0
-      let linesCreated = 0
-
-      // Insert journals and lines in batches
-      for (const [number, lines] of transactionGroups) {
+      // First, insert all journals in batch
+      const journalsToInsert = Array.from(transactionGroups.entries()).map(([number, lines]) => {
         const firstLine = lines[0]
         const date = parseDate(firstLine.date)
         const period = date.substring(0, 7) // YYYY-MM
+        
+        return {
+          number: `JRN-GL-${number}`,
+          date,
+          period,
+          description: firstLine.description,
+          status: 'POSTED' as const,
+          import_log_id: importLog.id,
+        }
+      })
 
-        // Create journal
-        const { data: journal, error: journalError } = await supabase
-          .from('journal')
-          .insert({
-            number: `JRN-GL-${number}`,
-            date,
-            period,
-            description: firstLine.description,
-            status: 'POSTED',
-            import_log_id: importLog.id,
-          })
-          .select()
-          .single()
+      console.log(`Inserting ${journalsToInsert.length} journals...`)
 
-        if (journalError) {
-          console.error(`Error creating journal ${number}:`, journalError)
+      const { data: createdJournals, error: journalError } = await supabase
+        .from('journal')
+        .insert(journalsToInsert)
+        .select('id, number')
+
+      if (journalError) {
+        console.error('Error creating journals:', journalError)
+        throw new Error(`Failed to create journals: ${journalError.message}`)
+      }
+
+      const journalsCreated = createdJournals?.length || 0
+      console.log(`Created ${journalsCreated} journals`)
+
+      // Create a map of journal number to journal ID
+      const journalMap = new Map(createdJournals?.map(j => [j.number, j.id]) || [])
+
+      // Now insert all journal lines in batch
+      const allJournalLines: any[] = []
+      
+      for (const [number, lines] of transactionGroups) {
+        const journalId = journalMap.get(`JRN-GL-${number}`)
+        if (!journalId) {
+          console.error(`Journal ID not found for ${number}`)
           continue
         }
 
-        journalsCreated++
+        lines.forEach((line, index) => {
+          allJournalLines.push({
+            journal_id: journalId,
+            account_code: line.accountCode,
+            description: line.description,
+            debit: Math.round(line.debit),
+            credit: Math.round(line.credit),
+            sort_order: index,
+          })
+        })
+      }
 
-        // Create journal lines
-        const journalLines = lines.map((line, index) => ({
-          journal_id: journal.id,
-          account_code: line.accountCode,
-          description: line.description,
-          debit: Math.round(line.debit),
-          credit: Math.round(line.credit),
-          sort_order: index,
-        }))
+      console.log(`Inserting ${allJournalLines.length} journal lines...`)
 
+      // Insert in chunks of 500 to avoid payload size limits
+      let linesCreated = 0
+      const chunkSize = 500
+      
+      for (let i = 0; i < allJournalLines.length; i += chunkSize) {
+        const chunk = allJournalLines.slice(i, i + chunkSize)
         const { error: lineError } = await supabase
           .from('journal_line')
-          .insert(journalLines)
+          .insert(chunk)
 
         if (lineError) {
-          console.error(`Error creating lines for journal ${number}:`, lineError)
-        } else {
-          linesCreated += journalLines.length
+          console.error(`Error inserting lines chunk ${i / chunkSize + 1}:`, lineError)
+          throw new Error(`Failed to insert journal lines: ${lineError.message}`)
         }
+        
+        linesCreated += chunk.length
+        console.log(`Inserted ${linesCreated} / ${allJournalLines.length} lines`)
       }
 
       // Update import log
@@ -296,6 +323,62 @@ export function ImportGeneralLedgerSQL() {
   const handleReset = () => {
     setFile(null)
     setResult(null)
+  }
+
+  const handleCleanup = async () => {
+    if (!confirm('This will delete all journals that have no journal lines. Continue?')) {
+      return
+    }
+
+    setIsCleaning(true)
+
+    try {
+      // Find journals with no lines
+      const { data: brokenJournals, error: queryError } = await supabase
+        .from('journal')
+        .select('id')
+        .not('import_log_id', 'is', null)
+
+      if (queryError) throw queryError
+
+      if (!brokenJournals || brokenJournals.length === 0) {
+        toast.info('No broken journals found')
+        return
+      }
+
+      // Check which have no lines
+      const journalsToDelete: string[] = []
+      for (const j of brokenJournals) {
+        const { count } = await supabase
+          .from('journal_line')
+          .select('*', { count: 'exact', head: true })
+          .eq('journal_id', j.id)
+        
+        if (count === 0) {
+          journalsToDelete.push(j.id)
+        }
+      }
+
+      if (journalsToDelete.length === 0) {
+        toast.info('No broken journals found')
+        return
+      }
+
+      // Delete broken journals
+      const { error: deleteError } = await supabase
+        .from('journal')
+        .delete()
+        .in('id', journalsToDelete)
+
+      if (deleteError) throw deleteError
+
+      toast.success(`Deleted ${journalsToDelete.length} broken journals`)
+    } catch (error) {
+      console.error('Cleanup error:', error)
+      toast.error(`Cleanup failed: ${error.message}`)
+    } finally {
+      setIsCleaning(false)
+    }
   }
 
   return (
@@ -334,6 +417,14 @@ export function ImportGeneralLedgerSQL() {
             </div>
 
             <div className="flex gap-2">
+              <Button
+                onClick={handleCleanup}
+                disabled={isCleaning}
+                variant="outline"
+                className="flex-1"
+              >
+                {isCleaning ? 'Cleaning...' : 'Clean Broken Journals'}
+              </Button>
               <Button
                 onClick={handleImport}
                 disabled={!file || isImporting}
