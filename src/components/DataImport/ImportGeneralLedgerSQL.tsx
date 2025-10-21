@@ -3,8 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
-import { Upload, AlertCircle, CheckCircle2 } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Upload, AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import * as XLSX from 'xlsx'
 import type { AccountType } from '@/lib/types'
 
@@ -19,10 +19,31 @@ interface GLRow {
   credit: number
 }
 
+interface ValidationResult {
+  isValid: boolean
+  errors: string[]
+  warnings: string[]
+  accountConflicts: Array<{
+    code: string
+    existingName: string
+    newName: string
+  }>
+  stats: {
+    totalRows: number
+    validRows: number
+    invalidRows: number
+    uniqueAccounts: number
+    uniqueProjects: number
+    uniqueTransactions: number
+  }
+}
+
 export function ImportGeneralLedgerSQL() {
   const [file, setFile] = useState<File | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const [isCleaning, setIsCleaning] = useState(false)
+  const [isValidating, setIsValidating] = useState(false)
+  const [validation, setValidation] = useState<ValidationResult | null>(null)
   const [result, setResult] = useState<{
     accountsCreated: number
     projectsCreated: number
@@ -57,6 +78,162 @@ export function ImportGeneralLedgerSQL() {
     if (selectedFile) {
       setFile(selectedFile)
       setResult(null)
+      setValidation(null)
+    }
+  }
+
+  const validateImport = async () => {
+    if (!file) {
+      toast.error('Please select a file first')
+      return
+    }
+
+    setIsValidating(true)
+    console.log('=== VALIDATION STARTED ===')
+
+    try {
+      // Read Excel file
+      const data = await file.arrayBuffer()
+      const workbook = XLSX.read(data, { type: 'array' })
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]]
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 0 })
+
+      console.log(`Read ${jsonData.length} rows from Excel`)
+
+      const errors: string[] = []
+      const warnings: string[] = []
+      const accountConflicts: Array<{ code: string; existingName: string; newName: string }> = []
+      
+      // Get existing accounts
+      const { data: existingAccounts } = await supabase
+        .from('account')
+        .select('code, name')
+      
+      const existingAccountMap = new Map(existingAccounts?.map(a => [a.code, a.name]) || [])
+      
+      // Parse GL rows with validation
+      const glRows: GLRow[] = []
+      const accountsFound = new Set<string>()
+      const projectsFound = new Set<string>()
+      const transactionsFound = new Set<string>()
+      let invalidRows = 0
+
+      for (let i = 0; i < jsonData.length; i++) {
+        const row = jsonData[i] as any
+        const rowNum = i + 2 // Excel row number
+
+        // Validate required fields
+        if (!row['Nama Akun']) {
+          invalidRows++
+          continue
+        }
+
+        const accountField = row['Nama Akun'] || ''
+        const match = accountField.match(/\(([^)]+)\)\s*(.*)/)
+        
+        if (!match) {
+          invalidRows++
+          warnings.push(`Row ${rowNum}: Invalid account format "${accountField}"`)
+          continue
+        }
+
+        if (!row['Nomor']) {
+          invalidRows++
+          continue // Skip opening balance rows
+        }
+
+        const accountCode = match[1].trim()
+        const accountName = match[2].trim()
+
+        // Check for account code conflicts
+        if (existingAccountMap.has(accountCode)) {
+          const existingName = existingAccountMap.get(accountCode)!
+          if (existingName !== accountName) {
+            if (!accountConflicts.some(c => c.code === accountCode)) {
+              accountConflicts.push({
+                code: accountCode,
+                existingName,
+                newName: accountName,
+              })
+            }
+          }
+        }
+
+        // Validate date format
+        if (!row['Tanggal'] || !row['Tanggal'].match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+          errors.push(`Row ${rowNum}: Invalid date format "${row['Tanggal']}" (expected DD/MM/YYYY)`)
+        }
+
+        // Validate amounts
+        const debit = parseFloat(row['Debit'] || '0')
+        const credit = parseFloat(row['Kredit'] || '0')
+        
+        if (isNaN(debit) || isNaN(credit)) {
+          errors.push(`Row ${rowNum}: Invalid debit/credit amounts`)
+        }
+
+        if (debit === 0 && credit === 0) {
+          warnings.push(`Row ${rowNum}: Both debit and credit are zero`)
+        }
+
+        // Add to valid rows
+        glRows.push({
+          accountCode,
+          accountName,
+          date: row['Tanggal'],
+          transactionType: row['Transaksi'] || '',
+          number: row['Nomor'].toString(),
+          description: row['Keterangan'] || '',
+          debit,
+          credit,
+        })
+
+        accountsFound.add(accountCode)
+        transactionsFound.add(row['Nomor'].toString())
+      }
+
+      // Check for duplicate transaction numbers in existing journals
+      const { data: existingJournals } = await supabase
+        .from('journal')
+        .select('number')
+        .in('number', Array.from(transactionsFound).map(n => `JRN-GL-${n}`))
+
+      if (existingJournals && existingJournals.length > 0) {
+        warnings.push(`${existingJournals.length} journal numbers already exist and will be skipped`)
+      }
+
+      console.log(`Validation complete: ${glRows.length} valid rows, ${invalidRows} invalid rows`)
+      console.log(`Found ${accountConflicts.length} account conflicts`)
+
+      const validationResult: ValidationResult = {
+        isValid: errors.length === 0,
+        errors,
+        warnings,
+        accountConflicts,
+        stats: {
+          totalRows: jsonData.length,
+          validRows: glRows.length,
+          invalidRows,
+          uniqueAccounts: accountsFound.size,
+          uniqueProjects: projectsFound.size,
+          uniqueTransactions: transactionsFound.size,
+        },
+      }
+
+      setValidation(validationResult)
+
+      if (errors.length > 0) {
+        toast.error(`Validation failed with ${errors.length} error(s)`)
+      } else if (accountConflicts.length > 0) {
+        toast.warning(`Found ${accountConflicts.length} account code conflicts`)
+      } else {
+        toast.success('Validation passed! Ready to import')
+      }
+    } catch (error) {
+      console.error('Validation error:', error)
+      toast.error(`Validation failed: ${error.message}`)
+    } finally {
+      setIsValidating(false)
     }
   }
 
@@ -66,7 +243,15 @@ export function ImportGeneralLedgerSQL() {
       return
     }
 
+    if (!validation || !validation.isValid) {
+      toast.error('Please validate the file first')
+      return
+    }
+
     setIsImporting(true)
+    console.log('=== IMPORT STARTED ===')
+
+    let importLog: any = null
 
     try {
       // Read Excel file
@@ -111,13 +296,37 @@ export function ImportGeneralLedgerSQL() {
         .from('project')
         .select('code, name')
 
-      const existingAccountCodes = new Set(existingAccounts?.map(a => a.code) || [])
+      const existingAccountMap = new Map(existingAccounts?.map(a => [a.code, a.name]) || [])
       const existingProjectNames = new Set(existingProjects?.map(p => p.name) || [])
 
-      // Extract unique accounts
+      // Extract unique accounts with conflict resolution
       const accountsMap = new Map<string, { code: string; name: string; type: AccountType }>()
+      const conflictResolutions = new Map<string, string>() // original code -> new code
+      
       for (const row of glRows) {
-        if (!existingAccountCodes.has(row.accountCode)) {
+        if (existingAccountMap.has(row.accountCode)) {
+          const existingName = existingAccountMap.get(row.accountCode)!
+          if (existingName !== row.accountName) {
+            // Conflict: code exists with different name
+            // Create new code with suffix
+            let newCode = `${row.accountCode}-GL`
+            let counter = 1
+            while (existingAccountMap.has(newCode) || accountsMap.has(newCode)) {
+              newCode = `${row.accountCode}-GL${counter++}`
+            }
+            
+            console.log(`Conflict resolved: ${row.accountCode} (${row.accountName}) -> ${newCode}`)
+            conflictResolutions.set(row.accountCode, newCode)
+            
+            accountsMap.set(newCode, {
+              code: newCode,
+              name: row.accountName,
+              type: getAccountTypeFromCode(row.accountCode),
+            })
+          }
+          // else: code exists with same name, no need to create
+        } else {
+          // New account
           accountsMap.set(row.accountCode, {
             code: row.accountCode,
             name: row.accountName,
@@ -147,7 +356,7 @@ export function ImportGeneralLedgerSQL() {
       console.log(`Found ${accountsMap.size} new accounts, ${projectsSet.size} new projects`)
 
       // Create import log
-      const { data: importLog, error: logError } = await supabase
+      const { data: importLogData, error: logError } = await supabase
         .from('import_log')
         .insert({
           import_type: 'general_ledger_sql',
@@ -161,6 +370,7 @@ export function ImportGeneralLedgerSQL() {
         .single()
 
       if (logError) throw logError
+      importLog = importLogData
 
       let accountsCreated = 0
       let projectsCreated = 0
@@ -175,14 +385,18 @@ export function ImportGeneralLedgerSQL() {
           import_log_id: importLog.id,
         }))
 
+        console.log(`Creating ${accountsToInsert.length} new accounts...`)
+
         const { error: accountError } = await supabase
           .from('account')
           .insert(accountsToInsert)
 
         if (accountError) {
           console.error('Error creating accounts:', accountError)
+          throw new Error(`Failed to create accounts: ${accountError.message}`)
         } else {
           accountsCreated = accountsToInsert.length
+          console.log(`✓ Created ${accountsCreated} accounts`)
         }
       }
 
@@ -196,14 +410,18 @@ export function ImportGeneralLedgerSQL() {
           is_active: true,
         }))
 
+        console.log(`Creating ${projectsToInsert.length} new projects...`)
+
         const { error: projectError } = await supabase
           .from('project')
           .insert(projectsToInsert)
 
         if (projectError) {
           console.error('Error creating projects:', projectError)
+          throw new Error(`Failed to create projects: ${projectError.message}`)
         } else {
           projectsCreated = projectsToInsert.length
+          console.log(`✓ Created ${projectsCreated} projects`)
         }
       }
 
@@ -263,9 +481,12 @@ export function ImportGeneralLedgerSQL() {
         }
 
         lines.forEach((line, index) => {
+          // Use resolved code if there was a conflict
+          const accountCode = conflictResolutions.get(line.accountCode) || line.accountCode
+          
           allJournalLines.push({
             journal_id: journalId,
-            account_code: line.accountCode,
+            account_code: accountCode,
             description: line.description,
             debit: Math.round(line.debit),
             credit: Math.round(line.credit),
@@ -279,21 +500,32 @@ export function ImportGeneralLedgerSQL() {
       // Insert in chunks of 500 to avoid payload size limits
       let linesCreated = 0
       const chunkSize = 500
+      const totalChunks = Math.ceil(allJournalLines.length / chunkSize)
       
       for (let i = 0; i < allJournalLines.length; i += chunkSize) {
         const chunk = allJournalLines.slice(i, i + chunkSize)
-        const { error: lineError } = await supabase
-          .from('journal_line')
-          .insert(chunk)
-
-        if (lineError) {
-          console.error(`Error inserting lines chunk ${i / chunkSize + 1}:`, lineError)
-          throw new Error(`Failed to insert journal lines: ${lineError.message}`)
-        }
+        const chunkNumber = Math.floor(i / chunkSize) + 1
         
-        linesCreated += chunk.length
-        console.log(`Inserted ${linesCreated} / ${allJournalLines.length} lines`)
+        try {
+          const { error: lineError } = await supabase
+            .from('journal_line')
+            .insert(chunk)
+
+          if (lineError) {
+            console.error(`Error inserting lines chunk ${chunkNumber}/${totalChunks}:`, lineError)
+            console.error('Sample failed line:', chunk[0])
+            throw new Error(`Failed to insert journal lines at chunk ${chunkNumber}: ${lineError.message}`)
+          }
+          
+          linesCreated += chunk.length
+          console.log(`✓ Inserted chunk ${chunkNumber}/${totalChunks} (${linesCreated} / ${allJournalLines.length} lines)`)
+        } catch (error) {
+          console.error(`Fatal error on chunk ${chunkNumber}:`, error)
+          throw error
+        }
       }
+
+      console.log(`✓ All ${linesCreated} journal lines inserted successfully`)
 
       // Update import log
       await supabase
@@ -311,10 +543,22 @@ export function ImportGeneralLedgerSQL() {
         linesCreated,
       })
 
+      console.log('=== IMPORT COMPLETED SUCCESSFULLY ===')
       toast.success(`Import completed! Created ${journalsCreated} journals with ${linesCreated} lines`)
     } catch (error) {
+      console.error('=== IMPORT FAILED ===')
       console.error('Import error:', error)
       toast.error(`Import failed: ${error.message}`)
+      
+      // Update import log with error
+      if (importLog?.id) {
+        await supabase
+          .from('import_log')
+          .update({
+            error_details: { error: error.message, stack: error.stack },
+          })
+          .eq('id', importLog.id)
+      }
     } finally {
       setIsImporting(false)
     }
@@ -323,6 +567,7 @@ export function ImportGeneralLedgerSQL() {
   const handleReset = () => {
     setFile(null)
     setResult(null)
+    setValidation(null)
   }
 
   const handleCleanup = async () => {
@@ -406,13 +651,89 @@ export function ImportGeneralLedgerSQL() {
                 </label>
               </div>
 
-              {file && (
+              {file && !validation && (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
                     File loaded: <strong>{file.name}</strong> ({(file.size / 1024).toFixed(1)} KB)
                   </AlertDescription>
                 </Alert>
+              )}
+
+              {validation && (
+                <div className="space-y-3">
+                  <Alert variant={validation.isValid ? "default" : "destructive"}>
+                    {validation.isValid ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4" />
+                    )}
+                    <AlertTitle>
+                      {validation.isValid ? 'Validation Passed' : 'Validation Failed'}
+                    </AlertTitle>
+                    <AlertDescription>
+                      <div className="space-y-2 mt-2">
+                        <div className="text-sm">
+                          <strong>Statistics:</strong>
+                          <ul className="list-disc list-inside ml-2 mt-1">
+                            <li>Total rows: {validation.stats.totalRows}</li>
+                            <li>Valid rows: {validation.stats.validRows}</li>
+                            <li>Invalid rows: {validation.stats.invalidRows}</li>
+                            <li>Unique accounts: {validation.stats.uniqueAccounts}</li>
+                            <li>Unique transactions: {validation.stats.uniqueTransactions}</li>
+                          </ul>
+                        </div>
+
+                        {validation.accountConflicts.length > 0 && (
+                          <div className="text-sm">
+                            <strong className="text-yellow-600">Account Conflicts ({validation.accountConflicts.length}):</strong>
+                            <ul className="list-disc list-inside ml-2 mt-1 max-h-32 overflow-y-auto">
+                              {validation.accountConflicts.slice(0, 5).map((conflict, i) => (
+                                <li key={i}>
+                                  {conflict.code}: "{conflict.existingName}" vs "{conflict.newName}"
+                                </li>
+                              ))}
+                              {validation.accountConflicts.length > 5 && (
+                                <li>... and {validation.accountConflicts.length - 5} more</li>
+                              )}
+                            </ul>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Conflicts will be resolved by creating new account codes with "-GL" suffix
+                            </p>
+                          </div>
+                        )}
+
+                        {validation.errors.length > 0 && (
+                          <div className="text-sm">
+                            <strong className="text-destructive">Errors ({validation.errors.length}):</strong>
+                            <ul className="list-disc list-inside ml-2 mt-1 max-h-32 overflow-y-auto">
+                              {validation.errors.slice(0, 5).map((error, i) => (
+                                <li key={i}>{error}</li>
+                              ))}
+                              {validation.errors.length > 5 && (
+                                <li>... and {validation.errors.length - 5} more</li>
+                              )}
+                            </ul>
+                          </div>
+                        )}
+
+                        {validation.warnings.length > 0 && (
+                          <div className="text-sm">
+                            <strong className="text-yellow-600">Warnings ({validation.warnings.length}):</strong>
+                            <ul className="list-disc list-inside ml-2 mt-1 max-h-32 overflow-y-auto">
+                              {validation.warnings.slice(0, 3).map((warning, i) => (
+                                <li key={i}>{warning}</li>
+                              ))}
+                              {validation.warnings.length > 3 && (
+                                <li>... and {validation.warnings.length - 3} more</li>
+                              )}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                </div>
               )}
             </div>
 
@@ -425,14 +746,26 @@ export function ImportGeneralLedgerSQL() {
               >
                 {isCleaning ? 'Cleaning...' : 'Clean Broken Journals'}
               </Button>
-              <Button
-                onClick={handleImport}
-                disabled={!file || isImporting}
-                className="flex-1"
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                {isImporting ? 'Importing...' : 'Import General Ledger'}
-              </Button>
+              
+              {!validation ? (
+                <Button
+                  onClick={validateImport}
+                  disabled={!file || isValidating}
+                  className="flex-1"
+                >
+                  <AlertCircle className="mr-2 h-4 w-4" />
+                  {isValidating ? 'Validating...' : 'Validate File'}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleImport}
+                  disabled={!validation.isValid || isImporting}
+                  className="flex-1"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {isImporting ? 'Importing...' : 'Import General Ledger'}
+                </Button>
+              )}
             </div>
           </>
         ) : (
