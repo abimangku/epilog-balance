@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,7 +7,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
-import { Upload, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { Upload, CheckCircle2, AlertCircle, Loader2, ArrowRight } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useAccounts } from '@/hooks/useAccounts'
 import * as XLSX from 'xlsx'
 
 interface GLRow {
@@ -45,7 +47,11 @@ export function ImportGeneralLedger() {
     errors: any[]
     projectsCreated: number
   } | null>(null)
+  const [showMapping, setShowMapping] = useState(false)
+  const [oldCodes, setOldCodes] = useState<Array<{code: string, name: string}>>([])
+  const [codeMapping, setCodeMapping] = useState<Record<string, string>>({})
   const { toast } = useToast()
+  const { data: accounts } = useAccounts()
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -81,9 +87,25 @@ export function ImportGeneralLedger() {
         .filter((row) => row.accountCode && row.transactionNumber)
 
       setPreview(mapped.slice(0, 10))
+      
+      // Extract unique account codes
+      const uniqueCodes = new Map<string, string>()
+      mapped.forEach(row => {
+        if (!uniqueCodes.has(row.accountCode)) {
+          uniqueCodes.set(row.accountCode, row.accountName)
+        }
+      })
+      
+      const oldCodesArray = Array.from(uniqueCodes.entries()).map(([code, name]) => ({
+        code,
+        name
+      }))
+      setOldCodes(oldCodesArray)
+      setShowMapping(true)
+      
       toast({
         title: 'File loaded',
-        description: `Found ${mapped.length} transaction lines. Showing first 10 for preview.`,
+        description: `Found ${mapped.length} lines with ${oldCodesArray.length} unique account codes. Please map old codes to new codes.`,
       })
     } catch (error: any) {
       toast({
@@ -290,10 +312,10 @@ export function ImportGeneralLedger() {
             }
           }
 
-          // Create journal lines
+          // Create journal lines with mapped codes
           const lines = tx.lines.map((line, idx) => ({
             journal_id: journal.id,
-            account_code: line.accountCode,
+            account_code: codeMapping[line.accountCode] || line.accountCode,
             debit: line.debit,
             credit: line.credit,
             description: line.description,
@@ -371,35 +393,74 @@ export function ImportGeneralLedger() {
           />
         </div>
 
-        {preview.length > 0 && !result && (
+        {showMapping && oldCodes.length > 0 && !result && (
           <Alert>
-            <CheckCircle2 className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              <div className="space-y-2">
-                <p className="font-semibold">Preview (first 10 lines):</p>
-                <div className="max-h-60 overflow-auto">
+              <div className="space-y-4">
+                <div>
+                  <p className="font-semibold text-lg mb-2">Map Account Codes</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Your GL file uses different account codes. Please map each old code to a new code from your current Chart of Accounts.
+                  </p>
+                </div>
+                
+                <div className="max-h-96 overflow-auto border rounded-lg">
                   <table className="w-full text-sm">
-                    <thead>
+                    <thead className="bg-muted sticky top-0">
                       <tr className="border-b">
-                        <th className="text-left p-2">Account</th>
-                        <th className="text-left p-2">Date</th>
-                        <th className="text-left p-2">Type</th>
-                        <th className="text-right p-2">Debit</th>
-                        <th className="text-right p-2">Credit</th>
+                        <th className="text-left p-3 font-semibold">Old Code</th>
+                        <th className="text-left p-3 font-semibold">Old Name</th>
+                        <th className="text-center p-3 w-12"></th>
+                        <th className="text-left p-3 font-semibold">New Code</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {preview.map((row, i) => (
-                        <tr key={i} className="border-b">
-                          <td className="p-2 text-xs">{row.accountCode}</td>
-                          <td className="p-2 text-xs">{row.date}</td>
-                          <td className="p-2 text-xs">{row.transactionType}</td>
-                          <td className="p-2 text-right text-xs">{row.debit.toLocaleString()}</td>
-                          <td className="p-2 text-right text-xs">{row.credit.toLocaleString()}</td>
+                      {oldCodes.map((oldAccount) => (
+                        <tr key={oldAccount.code} className="border-b hover:bg-muted/50">
+                          <td className="p-3 font-mono text-xs">{oldAccount.code}</td>
+                          <td className="p-3 text-xs">{oldAccount.name}</td>
+                          <td className="p-3 text-center">
+                            <ArrowRight className="h-4 w-4 text-muted-foreground mx-auto" />
+                          </td>
+                          <td className="p-3">
+                            <Select
+                              value={codeMapping[oldAccount.code] || ''}
+                              onValueChange={(value) => {
+                                setCodeMapping(prev => ({
+                                  ...prev,
+                                  [oldAccount.code]: value
+                                }))
+                              }}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select new code..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {accounts?.map((account) => (
+                                  <SelectItem key={account.code} value={account.code}>
+                                    {account.code} - {account.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+                
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-sm text-muted-foreground">
+                    Mapped: {Object.keys(codeMapping).length} / {oldCodes.length}
+                  </p>
+                  {Object.keys(codeMapping).length === oldCodes.length && (
+                    <p className="text-sm text-green-600 font-semibold flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4" />
+                      All codes mapped! Ready to import.
+                    </p>
+                  )}
                 </div>
               </div>
             </AlertDescription>
@@ -452,7 +513,7 @@ export function ImportGeneralLedger() {
         <div className="flex gap-2">
           <Button
             onClick={handleImport}
-            disabled={!file || importing || !!result}
+            disabled={!file || importing || !!result || Object.keys(codeMapping).length !== oldCodes.length}
             className="flex items-center gap-2"
           >
             <Upload className="h-4 w-4" />
@@ -466,6 +527,9 @@ export function ImportGeneralLedger() {
                 setPreview([])
                 setResult(null)
                 setProgress(0)
+                setShowMapping(false)
+                setOldCodes([])
+                setCodeMapping({})
               }}
             >
               Import Another File
