@@ -19,6 +19,7 @@ export type Database = {
           code: string
           created_at: string | null
           id: string
+          import_log_id: string | null
           is_active: boolean | null
           name: string
           parent_code: string | null
@@ -29,6 +30,7 @@ export type Database = {
           code: string
           created_at?: string | null
           id?: string
+          import_log_id?: string | null
           is_active?: boolean | null
           name: string
           parent_code?: string | null
@@ -39,13 +41,22 @@ export type Database = {
           code?: string
           created_at?: string | null
           id?: string
+          import_log_id?: string | null
           is_active?: boolean | null
           name?: string
           parent_code?: string | null
           type?: Database["public"]["Enums"]["account_type"]
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "account_import_log_id_fkey"
+            columns: ["import_log_id"]
+            isOneToOne: false
+            referencedRelation: "import_log"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       accounting_rules: {
         Row: {
@@ -418,6 +429,7 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string
+          import_log_id: string | null
           is_active: boolean | null
           name: string
           notes: string | null
@@ -435,6 +447,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          import_log_id?: string | null
           is_active?: boolean | null
           name: string
           notes?: string | null
@@ -452,6 +465,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          import_log_id?: string | null
           is_active?: boolean | null
           name?: string
           notes?: string | null
@@ -461,7 +475,15 @@ export type Database = {
           updated_at?: string | null
           withholds_pph23?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "client_import_log_id_fkey"
+            columns: ["import_log_id"]
+            isOneToOne: false
+            referencedRelation: "import_log"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       company_settings: {
         Row: {
@@ -621,6 +643,51 @@ export type Database = {
           },
         ]
       }
+      import_log: {
+        Row: {
+          can_rollback: boolean | null
+          error_details: Json | null
+          file_name: string
+          file_size: number
+          id: string
+          import_type: string
+          imported_at: string | null
+          imported_by: string | null
+          records_failed: number
+          records_success: number
+          records_total: number
+          rolled_back_at: string | null
+        }
+        Insert: {
+          can_rollback?: boolean | null
+          error_details?: Json | null
+          file_name: string
+          file_size: number
+          id?: string
+          import_type: string
+          imported_at?: string | null
+          imported_by?: string | null
+          records_failed: number
+          records_success: number
+          records_total: number
+          rolled_back_at?: string | null
+        }
+        Update: {
+          can_rollback?: boolean | null
+          error_details?: Json | null
+          file_name?: string
+          file_size?: number
+          id?: string
+          import_type?: string
+          imported_at?: string | null
+          imported_by?: string | null
+          records_failed?: number
+          records_success?: number
+          records_total?: number
+          rolled_back_at?: string | null
+        }
+        Relationships: []
+      }
       invoice_line: {
         Row: {
           amount: number
@@ -696,6 +763,7 @@ export type Database = {
           date: string
           description: string
           id: string
+          import_log_id: string | null
           is_locked: boolean | null
           number: string
           period: string
@@ -712,6 +780,7 @@ export type Database = {
           date: string
           description: string
           id?: string
+          import_log_id?: string | null
           is_locked?: boolean | null
           number: string
           period: string
@@ -728,6 +797,7 @@ export type Database = {
           date?: string
           description?: string
           id?: string
+          import_log_id?: string | null
           is_locked?: boolean | null
           number?: string
           period?: string
@@ -735,7 +805,15 @@ export type Database = {
           source_doc_type?: string | null
           status?: Database["public"]["Enums"]["journal_status"] | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "journal_import_log_id_fkey"
+            columns: ["import_log_id"]
+            isOneToOne: false
+            referencedRelation: "import_log"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       journal_attachment: {
         Row: {
@@ -1393,6 +1471,7 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string
+          import_log_id: string | null
           is_active: boolean | null
           name: string
           notes: string | null
@@ -1415,6 +1494,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          import_log_id?: string | null
           is_active?: boolean | null
           name: string
           notes?: string | null
@@ -1437,6 +1517,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          import_log_id?: string | null
           is_active?: boolean | null
           name?: string
           notes?: string | null
@@ -1448,7 +1529,15 @@ export type Database = {
           tax_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vendor_import_log_id_fkey"
+            columns: ["import_log_id"]
+            isOneToOne: false
+            referencedRelation: "import_log"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vendor_bill: {
         Row: {
