@@ -26,9 +26,14 @@ export function AIAssistant() {
   const { data: messages } = useConversation(selectedConversation);
   const sendMessage = useSendMessage();
 
+  // Only scroll when messages change, not during streaming
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingContent]);
+    if (!isStreaming && messages && messages.length > 0) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 100);
+    }
+  }, [messages, isStreaming]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() && attachedFiles.length === 0) return;
