@@ -6,7 +6,6 @@ import { ImportClients } from './ImportClients'
 import { ImportOpeningBalances } from './ImportOpeningBalances'
 import { ImportHistory } from './ImportHistory'
 import { ImportGeneralLedger } from './ImportGeneralLedger'
-import { ImportGeneralLedgerSQL } from './ImportGeneralLedgerSQL'
 import { ImportValidation } from './ImportValidation'
 import { FileUp, Users, ListTree, DollarSign, FileText, CheckCircle } from 'lucide-react'
 
@@ -63,10 +62,7 @@ export function DataImportDashboard() {
         </TabsContent>
 
         <TabsContent value="gl" className="mt-6">
-          <div className="space-y-4">
-            <ImportGeneralLedgerSQL />
-            <ImportGeneralLedger />
-          </div>
+          <ImportGeneralLedger />
         </TabsContent>
 
         <TabsContent value="validation" className="mt-6">

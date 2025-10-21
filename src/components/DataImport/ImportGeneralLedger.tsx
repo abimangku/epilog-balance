@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,11 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
-import { Upload, CheckCircle2, AlertCircle, Loader2, ArrowRight } from 'lucide-react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
-import { useAccounts } from '@/hooks/useAccounts'
-import type { AccountType } from '@/lib/types'
+import { Upload, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
 interface GLRow {
@@ -48,14 +44,8 @@ export function ImportGeneralLedger() {
     failed: number
     errors: any[]
     projectsCreated: number
-    accountsCreated: number
   } | null>(null)
-  const [showMapping, setShowMapping] = useState(false)
-  const [oldCodes, setOldCodes] = useState<Array<{code: string, name: string}>>([])
-  const [codeMapping, setCodeMapping] = useState<Record<string, string>>({})
-  const [autoCreateAccounts, setAutoCreateAccounts] = useState(true)
   const { toast } = useToast()
-  const { data: accounts } = useAccounts()
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
@@ -70,46 +60,24 @@ export function ImportGeneralLedger() {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]]
       const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[]
 
-      // Extract account code from "Nama Akun" column which has format "(CODE) Name"
-      const extractAccountCode = (namaAkun: string): string => {
-        const match = namaAkun?.match(/\(([^)]+)\)/)
-        return match ? match[1] : ''
-      }
-
       const mapped = jsonData
-        .filter((row) => row['Transaksi'] && row['Transaksi'] !== 'Saldo Awal')
+        .filter((row) => row['Transaction Type'] && row['Transaction Type'] !== 'Saldo Awal')
         .map((row) => ({
-          accountCode: extractAccountCode(row['Nama Akun'] || ''),
-          accountName: row['Nama Akun'] || '',
-          date: row['Tanggal'] || '',
-          transactionType: row['Transaksi'] || '',
-          transactionNumber: row['Nomor'] || '',
-          description: row['Keterangan'] || '',
-          debit: parseFloat(String(row['Debit'] || '0').replace(/,/g, '')),
-          credit: parseFloat(String(row['Kredit'] || '0').replace(/,/g, '')),
+          accountCode: row['Account Code'] || '',
+          accountName: row['Account Name'] || '',
+          date: row['Date'] || '',
+          transactionType: row['Transaction Type'] || '',
+          transactionNumber: row['Transaction Number'] || '',
+          description: row['Description'] || '',
+          debit: parseFloat(row['Debit'] || '0'),
+          credit: parseFloat(row['Credit'] || '0'),
         }))
         .filter((row) => row.accountCode && row.transactionNumber)
 
       setPreview(mapped.slice(0, 10))
-      
-      // Extract unique account codes
-      const uniqueCodes = new Map<string, string>()
-      mapped.forEach(row => {
-        if (!uniqueCodes.has(row.accountCode)) {
-          uniqueCodes.set(row.accountCode, row.accountName)
-        }
-      })
-      
-      const oldCodesArray = Array.from(uniqueCodes.entries()).map(([code, name]) => ({
-        code,
-        name
-      }))
-      setOldCodes(oldCodesArray)
-      setShowMapping(true)
-      
       toast({
         title: 'File loaded',
-        description: `Found ${mapped.length} lines with ${oldCodesArray.length} unique account codes. Please map old codes to new codes.`,
+        description: `Found ${mapped.length} transaction lines. Showing first 10 for preview.`,
       })
     } catch (error: any) {
       toast({
@@ -118,71 +86,6 @@ export function ImportGeneralLedger() {
         variant: 'destructive',
       })
     }
-  }
-
-  const getAccountTypeFromCode = (code: string): AccountType => {
-    const prefix = code.split('-')[0]
-    switch(prefix) {
-      case '1': return 'ASSET'
-      case '2': return 'LIABILITY'
-      case '3': return 'EQUITY'
-      case '4': return 'REVENUE'
-      case '5': return 'COGS'
-      case '6': return 'OPEX'
-      case '7': return 'OTHER_INCOME'
-      case '8': return 'OTHER_EXPENSE'
-      case '9': return 'TAX_EXPENSE'
-      default: return 'OPEX'
-    }
-  }
-
-  const autoCreateMissingAccounts = async (
-    glLines: GLRow[], 
-    importLogId: string
-  ): Promise<number> => {
-    // Extract unique account codes
-    const uniqueAccounts = new Map<string, string>()
-    glLines.forEach(line => {
-      if (!uniqueAccounts.has(line.accountCode)) {
-        // Extract account name without the code prefix
-        const name = line.accountName.replace(/\([^)]+\)\s*/, '').trim()
-        uniqueAccounts.set(line.accountCode, name)
-      }
-    })
-
-    // Get existing account codes
-    const { data: existingAccounts } = await supabase
-      .from('account')
-      .select('code')
-    
-    const existingCodes = new Set(existingAccounts?.map(a => a.code) || [])
-
-    // Filter to only missing accounts
-    const missingAccounts = Array.from(uniqueAccounts.entries())
-      .filter(([code]) => !existingCodes.has(code))
-      .map(([code, name]) => ({
-        code,
-        name,
-        type: getAccountTypeFromCode(code),
-        is_active: true,
-        import_log_id: importLogId
-      }))
-
-    if (missingAccounts.length === 0) {
-      return 0
-    }
-
-    // Batch insert missing accounts
-    const { error } = await supabase
-      .from('account')
-      .insert(missingAccounts)
-
-    if (error) {
-      console.error('Error creating accounts:', error)
-      throw new Error(`Failed to create ${missingAccounts.length} missing accounts: ${error.message}`)
-    }
-
-    return missingAccounts.length
   }
 
   const detectAndCreateProjects = async (transactions: TransactionGroup[]) => {
@@ -253,23 +156,17 @@ export function ImportGeneralLedger() {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]]
       const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[]
 
-      // Extract account code from "Nama Akun" column which has format "(CODE) Name"
-      const extractAccountCode = (namaAkun: string): string => {
-        const match = namaAkun?.match(/\(([^)]+)\)/)
-        return match ? match[1] : ''
-      }
-
       const glLines = jsonData
-        .filter((row) => row['Transaksi'] && row['Transaksi'] !== 'Saldo Awal')
+        .filter((row) => row['Transaction Type'] && row['Transaction Type'] !== 'Saldo Awal')
         .map((row) => ({
-          accountCode: extractAccountCode(row['Nama Akun'] || ''),
-          accountName: row['Nama Akun'] || '',
-          date: row['Tanggal'] || '',
-          transactionType: row['Transaksi'] || '',
-          transactionNumber: row['Nomor'] || '',
-          description: row['Keterangan'] || '',
-          debit: parseFloat(String(row['Debit'] || '0').replace(/,/g, '')),
-          credit: parseFloat(String(row['Kredit'] || '0').replace(/,/g, '')),
+          accountCode: row['Account Code'] || '',
+          accountName: row['Account Name'] || '',
+          date: row['Date'] || '',
+          transactionType: row['Transaction Type'] || '',
+          transactionNumber: row['Transaction Number'] || '',
+          description: row['Description'] || '',
+          debit: parseFloat(row['Debit'] || '0'),
+          credit: parseFloat(row['Credit'] || '0'),
         }))
         .filter((row) => row.accountCode && row.transactionNumber)
 
@@ -320,18 +217,6 @@ export function ImportGeneralLedger() {
 
       if (logError) throw logError
 
-      // Auto-create missing accounts if enabled
-      let accountsCreated = 0
-      if (autoCreateAccounts) {
-        accountsCreated = await autoCreateMissingAccounts(glLines, importLogData.id)
-        if (accountsCreated > 0) {
-          toast({
-            title: 'Accounts created',
-            description: `Auto-created ${accountsCreated} missing account codes`,
-          })
-        }
-      }
-
       // Detect and create projects
       const { projectsCreated, projectCodes } = await detectAndCreateProjects(transactions)
 
@@ -351,16 +236,13 @@ export function ImportGeneralLedger() {
             throw new Error(`Unbalanced entry: DR ${totalDebit} != CR ${totalCredit}`)
           }
 
-          // Parse date from DD/MM/YYYY format
+          // Parse date
           const dateStr = tx.date
           let journalDate: string
           
           if (dateStr.includes('/')) {
-            const parts = dateStr.split('/')
-            const day = parts[0].padStart(2, '0')
-            const month = parts[1].padStart(2, '0')
-            const year = parts[2]
-            journalDate = `${year}-${month}-${day}`
+            const [day, month, year] = dateStr.split('/')
+            journalDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
           } else {
             journalDate = dateStr
           }
@@ -393,10 +275,10 @@ export function ImportGeneralLedger() {
             }
           }
 
-          // Create journal lines with mapped codes
+          // Create journal lines
           const lines = tx.lines.map((line, idx) => ({
             journal_id: journal.id,
-            account_code: codeMapping[line.accountCode] || line.accountCode,
+            account_code: line.accountCode,
             debit: line.debit,
             credit: line.credit,
             description: line.description,
@@ -436,13 +318,12 @@ export function ImportGeneralLedger() {
         success: successCount, 
         failed: failedCount, 
         errors,
-        projectsCreated,
-        accountsCreated
+        projectsCreated 
       })
 
       toast({
         title: 'Import complete',
-        description: `Imported ${successCount} journals, created ${accountsCreated} accounts and ${projectsCreated} projects. ${failedCount} failed.`,
+        description: `Imported ${successCount} journals, created ${projectsCreated} projects. ${failedCount} failed.`,
       })
     } catch (error: any) {
       toast({
@@ -475,93 +356,35 @@ export function ImportGeneralLedger() {
           />
         </div>
 
-        {file && !result && (
-          <div className="flex items-center space-x-2 p-4 bg-muted/50 rounded-lg border">
-            <Checkbox 
-              id="auto-create" 
-              checked={autoCreateAccounts}
-              onCheckedChange={(checked) => setAutoCreateAccounts(checked === true)}
-            />
-            <Label 
-              htmlFor="auto-create" 
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-            >
-              Auto-create missing accounts from General Ledger
-              <span className="block text-xs text-muted-foreground font-normal mt-1">
-                Automatically create account codes that don't exist in your current COA
-              </span>
-            </Label>
-          </div>
-        )}
-
-        {showMapping && oldCodes.length > 0 && !result && !autoCreateAccounts && (
+        {preview.length > 0 && !result && (
           <Alert>
-            <AlertCircle className="h-4 w-4" />
+            <CheckCircle2 className="h-4 w-4" />
             <AlertDescription>
-              <div className="space-y-4">
-                <div>
-                  <p className="font-semibold text-lg mb-2">Map Account Codes</p>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Your GL file uses different account codes. Please map each old code to a new code from your current Chart of Accounts.
-                  </p>
-                </div>
-                
-                <div className="max-h-96 overflow-auto border rounded-lg">
+              <div className="space-y-2">
+                <p className="font-semibold">Preview (first 10 lines):</p>
+                <div className="max-h-60 overflow-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-muted sticky top-0">
+                    <thead>
                       <tr className="border-b">
-                        <th className="text-left p-3 font-semibold">Old Code</th>
-                        <th className="text-left p-3 font-semibold">Old Name</th>
-                        <th className="text-center p-3 w-12"></th>
-                        <th className="text-left p-3 font-semibold">New Code</th>
+                        <th className="text-left p-2">Account</th>
+                        <th className="text-left p-2">Date</th>
+                        <th className="text-left p-2">Type</th>
+                        <th className="text-right p-2">Debit</th>
+                        <th className="text-right p-2">Credit</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {oldCodes.map((oldAccount) => (
-                        <tr key={oldAccount.code} className="border-b hover:bg-muted/50">
-                          <td className="p-3 font-mono text-xs">{oldAccount.code}</td>
-                          <td className="p-3 text-xs">{oldAccount.name}</td>
-                          <td className="p-3 text-center">
-                            <ArrowRight className="h-4 w-4 text-muted-foreground mx-auto" />
-                          </td>
-                          <td className="p-3">
-                            <Select
-                              value={codeMapping[oldAccount.code] || ''}
-                              onValueChange={(value) => {
-                                setCodeMapping(prev => ({
-                                  ...prev,
-                                  [oldAccount.code]: value
-                                }))
-                              }}
-                            >
-                              <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Select new code..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {accounts?.map((account) => (
-                                  <SelectItem key={account.code} value={account.code}>
-                                    {account.code} - {account.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </td>
+                      {preview.map((row, i) => (
+                        <tr key={i} className="border-b">
+                          <td className="p-2 text-xs">{row.accountCode}</td>
+                          <td className="p-2 text-xs">{row.date}</td>
+                          <td className="p-2 text-xs">{row.transactionType}</td>
+                          <td className="p-2 text-right text-xs">{row.debit.toLocaleString()}</td>
+                          <td className="p-2 text-right text-xs">{row.credit.toLocaleString()}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                </div>
-                
-                <div className="flex items-center justify-between pt-2">
-                  <p className="text-sm text-muted-foreground">
-                    Mapped: {Object.keys(codeMapping).length} / {oldCodes.length}
-                  </p>
-                  {Object.keys(codeMapping).length === oldCodes.length && (
-                    <p className="text-sm text-green-600 font-semibold flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4" />
-                      All codes mapped! Ready to import.
-                    </p>
-                  )}
                 </div>
               </div>
             </AlertDescription>
@@ -589,7 +412,6 @@ export function ImportGeneralLedger() {
               <div className="space-y-2">
                 <p className="font-semibold">Import Results:</p>
                 <p>✓ Journal entries imported: {result.success}</p>
-                {result.accountsCreated > 0 && <p>✓ Accounts auto-created: {result.accountsCreated}</p>}
                 <p>✓ Projects auto-created: {result.projectsCreated}</p>
                 {result.failed > 0 && <p>✗ Failed: {result.failed}</p>}
                 {result.errors.length > 0 && (
@@ -615,7 +437,7 @@ export function ImportGeneralLedger() {
         <div className="flex gap-2">
           <Button
             onClick={handleImport}
-            disabled={!file || importing || !!result || (!autoCreateAccounts && Object.keys(codeMapping).length !== oldCodes.length)}
+            disabled={!file || importing || !!result}
             className="flex items-center gap-2"
           >
             <Upload className="h-4 w-4" />
@@ -629,10 +451,6 @@ export function ImportGeneralLedger() {
                 setPreview([])
                 setResult(null)
                 setProgress(0)
-            setShowMapping(false)
-            setOldCodes([])
-            setCodeMapping({})
-            setAutoCreateAccounts(true)
               }}
             >
               Import Another File
