@@ -1787,6 +1787,10 @@ export type Database = {
           ppn_masukan: number
         }[]
       }
+      clean_slate_reset: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       create_period_snapshot: {
         Args: { p_period: string }
         Returns: string

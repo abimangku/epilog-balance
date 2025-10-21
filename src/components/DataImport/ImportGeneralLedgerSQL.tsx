@@ -624,68 +624,32 @@ export function ImportGeneralLedgerSQL() {
     toast('Starting clean slate reset...', { duration: 2000 })
 
     try {
-      // Step 1: Delete journal lines
-      console.log('Step 1: Deleting journal lines...')
-      const { error: linesError } = await supabase
-        .from('journal_line')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000')
+      // Call the database function with elevated privileges
+      const { data, error } = await supabase.rpc('clean_slate_reset')
 
-      if (linesError) throw linesError
-      console.log('✓ Journal lines deleted')
+      if (error) throw error
 
-      // Step 2: Delete journals
-      console.log('Step 2: Deleting journals...')
-      const { error: journalsError } = await supabase
-        .from('journal')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000')
+      const result = data as { 
+        success: boolean
+        journals_deleted: number
+        conversations_deleted: number
+        lines_deleted: number
+        messages_deleted: number
+        suggestions_deleted: number
+      }
 
-      if (journalsError) throw journalsError
-      console.log('✓ Journals deleted')
-
-      // Step 3: Delete AI suggestion logs
-      console.log('Step 3: Deleting AI suggestions...')
-      const { error: suggestionsError } = await supabase
-        .from('ai_suggestion_log')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000')
-
-      if (suggestionsError) throw suggestionsError
-      console.log('✓ AI suggestions deleted')
-
-      // Step 4: Delete conversation messages
-      console.log('Step 4: Deleting conversation messages...')
-      const { error: messagesError } = await supabase
-        .from('conversation_message')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000')
-
-      if (messagesError) throw messagesError
-      console.log('✓ Conversation messages deleted')
-
-      // Step 5: Delete conversations
-      console.log('Step 5: Deleting conversations...')
-      const { error: conversationsError } = await supabase
-        .from('conversation')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000')
-
-      if (conversationsError) throw conversationsError
-      console.log('✓ Conversations deleted')
-
-      toast.success('✅ Clean Slate Reset Complete!', { duration: 3000 })
-      console.log('=== CLEAN SLATE RESET COMPLETED SUCCESSFULLY ===')
+      console.log('✅ CLEAN SLATE RESET COMPLETE!', result)
+      toast.success(
+        `✅ Deleted: ${result.journals_deleted} journals, ${result.conversations_deleted} conversations. Reloading...`,
+        { duration: 3000 }
+      )
       
-      // Refresh the page to show clean state
       setTimeout(() => {
-        toast.info('Refreshing to show clean state...')
         window.location.reload()
       }, 2000)
-      
     } catch (error) {
-      console.error('❌ Clean slate reset error:', error)
-      toast.error(`Reset failed: ${error.message}`)
+      console.error('❌ Cleanup error:', error)
+      toast.error(`Cleanup failed: ${error.message}`)
     } finally {
       setIsCleaning(false)
     }
