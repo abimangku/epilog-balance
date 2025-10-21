@@ -67,8 +67,33 @@ export function ImportGeneralLedgerSQL() {
     return mapping[prefix] || 'OPEX'
   }
 
+  const normalizeDateToString = (dateValue: any): string | null => {
+    // Convert Date object, Excel serial number, or string to DD/MM/YYYY format
+    try {
+      if (dateValue instanceof Date) {
+        const day = dateValue.getDate()
+        const month = dateValue.getMonth() + 1
+        const year = dateValue.getFullYear()
+        return `${day}/${month}/${year}`
+      } else if (typeof dateValue === 'number') {
+        // Excel serial date (days since 1900-01-01)
+        const excelEpoch = new Date(1900, 0, 1)
+        const date = new Date(excelEpoch.getTime() + (dateValue - 2) * 86400000)
+        const day = date.getDate()
+        const month = date.getMonth() + 1
+        const year = date.getFullYear()
+        return `${day}/${month}/${year}`
+      } else if (typeof dateValue === 'string') {
+        return dateValue.trim()
+      }
+      return null
+    } catch (error) {
+      return null
+    }
+  }
+
   const parseDate = (dateStr: string): string => {
-    // Parse DD/MM/YYYY format
+    // Parse DD/MM/YYYY format to YYYY-MM-DD
     const [day, month, year] = dateStr.split('/')
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
   }
@@ -159,8 +184,9 @@ export function ImportGeneralLedgerSQL() {
           }
         }
 
-        // Validate date format
-        if (!row['Tanggal'] || !row['Tanggal'].match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+        // Validate and normalize date format
+        const dateString = normalizeDateToString(row['Tanggal'])
+        if (!dateString || !dateString.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
           errors.push(`Row ${rowNum}: Invalid date format "${row['Tanggal']}" (expected DD/MM/YYYY)`)
         }
 
@@ -272,11 +298,18 @@ export function ImportGeneralLedgerSQL() {
         const accountName = match[2].trim()
         const debit = parseFloat(row['Debit'] || '0')
         const credit = parseFloat(row['Kredit'] || '0')
+        
+        // Normalize date to string format
+        const dateString = normalizeDateToString(row['Tanggal'])
+        if (!dateString) {
+          console.warn(`Row skipped: invalid date "${row['Tanggal']}"`)
+          continue
+        }
 
         glRows.push({
           accountCode,
           accountName,
-          date: row['Tanggal'],
+          date: dateString,
           transactionType: row['Transaksi'] || '',
           number: row['Nomor'].toString(),
           description: row['Keterangan'] || '',
