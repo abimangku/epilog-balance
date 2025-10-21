@@ -11,6 +11,7 @@ import ReactMarkdown from 'react-markdown';
 import { SuggestionCard } from './SuggestionCard';
 import { AIActionCard } from './AIActionCard';
 import { AIProgressIndicator } from './AIProgressIndicator';
+import { formatDistanceToNow } from 'date-fns';
 
 export function AIAssistant() {
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
@@ -477,17 +478,27 @@ export function AIAssistant() {
               <div className="pt-4 border-t">
                 <h3 className="font-semibold mb-2">Recent Conversations</h3>
                 <div className="space-y-2">
-                  {(conversations || []).slice(0, 5).map(conv => (
-                    <Button
-                      key={conv.id}
-                      variant="ghost"
-                      className="w-full justify-start"
-                      onClick={() => setSelectedConversation(conv.id)}
-                    >
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      {conv.title || 'Untitled conversation'}
-                    </Button>
-                  ))}
+                  {(conversations || []).slice(0, 5).map(conv => {
+                    const timeAgo = formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true });
+                    return (
+                      <Button
+                        key={conv.id}
+                        variant="ghost"
+                        className="w-full justify-start flex-col items-start h-auto py-2"
+                        onClick={() => setSelectedConversation(conv.id)}
+                      >
+                        <div className="flex items-center w-full">
+                          <MessageSquare className="mr-2 h-4 w-4 flex-shrink-0" />
+                          <span className="truncate text-sm font-medium">
+                            {conv.title || 'New Conversation'}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground ml-6">
+                          {timeAgo}
+                        </span>
+                      </Button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -506,17 +517,28 @@ export function AIAssistant() {
           New Chat
         </Button>
         <div className="space-y-1">
-          {conversations?.map(conv => (
-            <Button
-              key={conv.id}
-              variant={selectedConversation === conv.id ? 'secondary' : 'ghost'}
-              className="w-full justify-start text-sm"
-              onClick={() => setSelectedConversation(conv.id)}
-            >
-              <MessageSquare className="mr-2 h-4 w-4" />
-              <span className="truncate">{conv.title || 'New conversation'}</span>
-            </Button>
-          ))}
+          {conversations?.map(conv => {
+            const timeAgo = formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true });
+            return (
+              <Button
+                key={conv.id}
+                variant={selectedConversation === conv.id ? 'secondary' : 'ghost'}
+                className="w-full justify-start flex-col items-start h-auto py-2 px-3 text-sm"
+                onClick={() => setSelectedConversation(conv.id)}
+                title={conv.title || 'New Conversation'}
+              >
+                <div className="flex items-center w-full">
+                  <MessageSquare className="mr-2 h-4 w-4 flex-shrink-0" />
+                  <span className="truncate text-left flex-1">
+                    {conv.title || 'New Conversation'}
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground ml-6">
+                  {timeAgo}
+                </span>
+              </Button>
+            );
+          })}
         </div>
       </div>
 

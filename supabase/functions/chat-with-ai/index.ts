@@ -420,6 +420,89 @@ serve(async (req) => {
       .eq('conversation_id', convId)
       .order('created_at', { ascending: true });
 
+    // Auto-generate conversation title if needed
+    const shouldGenerateTitle = async () => {
+      // Check if conversation already has a title
+      const { data: conv } = await supabase
+        .from('conversation')
+        .select('title')
+        .eq('id', convId)
+        .single();
+      
+      if (conv?.title) return false; // Already has title
+      
+      // Only generate after at least 2 messages (user + AI response)
+      if (!messages || messages.length < 2) return false;
+      
+      // Check if first user message is a greeting
+      const firstUserMessage = messages.find(m => m.role === 'user')?.content?.toLowerCase() || '';
+      const greetings = ['halo', 'hai', 'hi', 'hello', 'hey', 'selamat pagi', 'selamat siang', 'selamat malam', 'morning', 'good morning', 'good afternoon', 'good evening'];
+      const isGreeting = greetings.some(g => firstUserMessage.trim() === g || firstUserMessage.trim() === g + '!');
+      
+      if (isGreeting) {
+        // If first message was greeting, wait for 3rd message (greeting, AI response, substantive message)
+        return messages.length >= 3;
+      }
+      
+      // If not greeting, generate after first AI response
+      return true;
+    };
+
+    if (await shouldGenerateTitle()) {
+      try {
+        // Find the first substantive user message
+        const userMessages = messages.filter(m => m.role === 'user');
+        const firstUserMessage = userMessages[0]?.content || '';
+        const greetings = ['halo', 'hai', 'hi', 'hello', 'hey', 'selamat pagi', 'selamat siang', 'selamat malam', 'morning', 'good morning', 'good afternoon', 'good evening'];
+        const isFirstGreeting = greetings.some(g => firstUserMessage.toLowerCase().trim() === g || firstUserMessage.toLowerCase().trim() === g + '!');
+        
+        const messageForTitle = isFirstGreeting && userMessages.length > 1 
+          ? userMessages[1].content 
+          : firstUserMessage;
+
+        // Generate title using AI
+        const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+        const titleResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash',
+            messages: [
+              { 
+                role: 'system', 
+                content: 'Generate a brief 3-5 word title summarizing the topic of this message. Return ONLY the title, nothing else.' 
+              },
+              { role: 'user', content: messageForTitle }
+            ],
+            temperature: 0.5,
+          }),
+        });
+
+        if (titleResponse.ok) {
+          const titleData = await titleResponse.json();
+          let generatedTitle = titleData.choices?.[0]?.message?.content?.trim();
+          
+          // Fallback to first 40 chars if generation fails
+          if (!generatedTitle) {
+            generatedTitle = messageForTitle.slice(0, 40) + (messageForTitle.length > 40 ? '...' : '');
+          }
+          
+          // Update conversation title
+          await supabase
+            .from('conversation')
+            .update({ title: generatedTitle })
+            .eq('id', convId);
+          
+          console.log('Auto-generated title:', generatedTitle);
+        }
+      } catch (titleError) {
+        console.log('Title generation error (non-fatal):', titleError);
+      }
+    }
+
     // Build context: Get relevant tax rules, vendor data, bank accounts, and chart of accounts
     const contextParts = [];
     

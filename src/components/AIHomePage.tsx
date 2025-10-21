@@ -23,6 +23,7 @@ import ReactMarkdown from 'react-markdown';
 import { SuggestionCard } from './SuggestionCard';
 import { ScrollArea } from './ui/scroll-area';
 import { AIProgressIndicator } from './AIProgressIndicator';
+import { formatDistanceToNow } from 'date-fns';
 
 interface AutoResizeProps {
   minHeight: number;
