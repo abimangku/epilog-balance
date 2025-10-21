@@ -9,7 +9,9 @@ import { useToast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
 import { Upload, CheckCircle2, AlertCircle, Loader2, ArrowRight } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useAccounts } from '@/hooks/useAccounts'
+import type { AccountType } from '@/lib/types'
 import * as XLSX from 'xlsx'
 
 interface GLRow {
@@ -46,10 +48,12 @@ export function ImportGeneralLedger() {
     failed: number
     errors: any[]
     projectsCreated: number
+    accountsCreated: number
   } | null>(null)
   const [showMapping, setShowMapping] = useState(false)
   const [oldCodes, setOldCodes] = useState<Array<{code: string, name: string}>>([])
   const [codeMapping, setCodeMapping] = useState<Record<string, string>>({})
+  const [autoCreateAccounts, setAutoCreateAccounts] = useState(true)
   const { toast } = useToast()
   const { data: accounts } = useAccounts()
 
@@ -114,6 +118,71 @@ export function ImportGeneralLedger() {
         variant: 'destructive',
       })
     }
+  }
+
+  const getAccountTypeFromCode = (code: string): AccountType => {
+    const prefix = code.split('-')[0]
+    switch(prefix) {
+      case '1': return 'ASSET'
+      case '2': return 'LIABILITY'
+      case '3': return 'EQUITY'
+      case '4': return 'REVENUE'
+      case '5': return 'COGS'
+      case '6': return 'OPEX'
+      case '7': return 'OTHER_INCOME'
+      case '8': return 'OTHER_EXPENSE'
+      case '9': return 'TAX_EXPENSE'
+      default: return 'OPEX'
+    }
+  }
+
+  const autoCreateMissingAccounts = async (
+    glLines: GLRow[], 
+    importLogId: string
+  ): Promise<number> => {
+    // Extract unique account codes
+    const uniqueAccounts = new Map<string, string>()
+    glLines.forEach(line => {
+      if (!uniqueAccounts.has(line.accountCode)) {
+        // Extract account name without the code prefix
+        const name = line.accountName.replace(/\([^)]+\)\s*/, '').trim()
+        uniqueAccounts.set(line.accountCode, name)
+      }
+    })
+
+    // Get existing account codes
+    const { data: existingAccounts } = await supabase
+      .from('account')
+      .select('code')
+    
+    const existingCodes = new Set(existingAccounts?.map(a => a.code) || [])
+
+    // Filter to only missing accounts
+    const missingAccounts = Array.from(uniqueAccounts.entries())
+      .filter(([code]) => !existingCodes.has(code))
+      .map(([code, name]) => ({
+        code,
+        name,
+        type: getAccountTypeFromCode(code),
+        is_active: true,
+        import_log_id: importLogId
+      }))
+
+    if (missingAccounts.length === 0) {
+      return 0
+    }
+
+    // Batch insert missing accounts
+    const { error } = await supabase
+      .from('account')
+      .insert(missingAccounts)
+
+    if (error) {
+      console.error('Error creating accounts:', error)
+      throw new Error(`Failed to create ${missingAccounts.length} missing accounts: ${error.message}`)
+    }
+
+    return missingAccounts.length
   }
 
   const detectAndCreateProjects = async (transactions: TransactionGroup[]) => {
@@ -251,6 +320,18 @@ export function ImportGeneralLedger() {
 
       if (logError) throw logError
 
+      // Auto-create missing accounts if enabled
+      let accountsCreated = 0
+      if (autoCreateAccounts) {
+        accountsCreated = await autoCreateMissingAccounts(glLines, importLogData.id)
+        if (accountsCreated > 0) {
+          toast({
+            title: 'Accounts created',
+            description: `Auto-created ${accountsCreated} missing account codes`,
+          })
+        }
+      }
+
       // Detect and create projects
       const { projectsCreated, projectCodes } = await detectAndCreateProjects(transactions)
 
@@ -355,12 +436,13 @@ export function ImportGeneralLedger() {
         success: successCount, 
         failed: failedCount, 
         errors,
-        projectsCreated 
+        projectsCreated,
+        accountsCreated
       })
 
       toast({
         title: 'Import complete',
-        description: `Imported ${successCount} journals, created ${projectsCreated} projects. ${failedCount} failed.`,
+        description: `Imported ${successCount} journals, created ${accountsCreated} accounts and ${projectsCreated} projects. ${failedCount} failed.`,
       })
     } catch (error: any) {
       toast({
@@ -393,7 +475,26 @@ export function ImportGeneralLedger() {
           />
         </div>
 
-        {showMapping && oldCodes.length > 0 && !result && (
+        {file && !result && (
+          <div className="flex items-center space-x-2 p-4 bg-muted/50 rounded-lg border">
+            <Checkbox 
+              id="auto-create" 
+              checked={autoCreateAccounts}
+              onCheckedChange={(checked) => setAutoCreateAccounts(checked === true)}
+            />
+            <Label 
+              htmlFor="auto-create" 
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+            >
+              Auto-create missing accounts from General Ledger
+              <span className="block text-xs text-muted-foreground font-normal mt-1">
+                Automatically create account codes that don't exist in your current COA
+              </span>
+            </Label>
+          </div>
+        )}
+
+        {showMapping && oldCodes.length > 0 && !result && !autoCreateAccounts && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
@@ -488,6 +589,7 @@ export function ImportGeneralLedger() {
               <div className="space-y-2">
                 <p className="font-semibold">Import Results:</p>
                 <p>✓ Journal entries imported: {result.success}</p>
+                {result.accountsCreated > 0 && <p>✓ Accounts auto-created: {result.accountsCreated}</p>}
                 <p>✓ Projects auto-created: {result.projectsCreated}</p>
                 {result.failed > 0 && <p>✗ Failed: {result.failed}</p>}
                 {result.errors.length > 0 && (
@@ -513,7 +615,7 @@ export function ImportGeneralLedger() {
         <div className="flex gap-2">
           <Button
             onClick={handleImport}
-            disabled={!file || importing || !!result || Object.keys(codeMapping).length !== oldCodes.length}
+            disabled={!file || importing || !!result || (!autoCreateAccounts && Object.keys(codeMapping).length !== oldCodes.length)}
             className="flex items-center gap-2"
           >
             <Upload className="h-4 w-4" />
@@ -527,9 +629,10 @@ export function ImportGeneralLedger() {
                 setPreview([])
                 setResult(null)
                 setProgress(0)
-                setShowMapping(false)
-                setOldCodes([])
-                setCodeMapping({})
+            setShowMapping(false)
+            setOldCodes([])
+            setCodeMapping({})
+            setAutoCreateAccounts(true)
               }}
             >
               Import Another File
